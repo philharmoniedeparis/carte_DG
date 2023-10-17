@@ -1,0 +1,377 @@
+/* reset all values to default */
+/* #cl-module,
+#cl-module *:not(map *) {
+    all: initial;
+}
+ */
+@font-face {
+    font-family: 'Philharmonique';
+    src: url('../fonts/Philharmonique-Bold.otf') format('opentype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Philharmonique';
+    src: url('../fonts/Philharmonique-Regular.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('../fonts/SourceSansPro-Bold.woff') format('woff');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('../fonts/SourceSansPro-It.woff') format('woff');
+    font-weight: normal;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('../fonts/SourceSansPro-Semibold.woff') format('woff');
+    font-weight: 600;
+    font-style: normal;
+}
+
+:root {
+    --light-grey: #E6E6E6;
+    --deep-blue: #001B3B;
+    --deep-blue-fade: rgba(0,27,59,0.5);
+    --light-blue: #B3D6FD;
+    --hover-blue: #A9BED8;
+    --white: #ffffff;
+
+    /* Dynamic color changing depending on data */
+    --radio-type-background: var(--light-blue);
+    --radio-type-color: var(--light-blue);
+}
+
+body{
+    max-width: 1200px;
+    width: 90vw;
+    margin: auto;
+    background-color: var(--light-grey);
+}
+#cl-module h2, #cl-module h3{
+    font-family: "Philharmonique";
+    font-weight: bold;
+    text-transform: uppercase;
+}
+#cl-module p, 
+#cl-module label, 
+#cl-module input{
+    font-family: 'Source Sans Pro';
+}
+#cl-module label{
+    font-size: 0.87em;
+}
+/* ////////// CONTAINER LAYOUT ////////// */
+#mapDG-container{
+    display: flex;
+    overflow: hidden;
+    position: relative;
+    justify-content: space-between;
+}
+
+
+/* ////////// MAP ////////// */
+
+#cl-module #mapDG{
+    width: 100%;
+    height: 80vh;
+    max-height: 800px;
+    display: block;
+    overflow: hidden;
+    border-radius: 16px;
+    transition: width 0.2s ease-in-out,  transform 0.2s ease-in-out;
+
+}
+#cl-module #mapDG .leaflet-tile-pane{
+    filter: saturate(0);
+}
+
+/* ////////// FILTERS OPEN BUTTON ////////// */
+#cl-module #open-close-filter{
+    position: absolute;
+    left: 0px;
+    z-index: 100001;
+    bottom: 20px;
+    background-color: var(--white);
+    border: none;
+    border-radius: 0 16px 16px 0;
+    padding: 0.5em 1em 0.5em 0.5em;
+    transition: 0.2s ease-in-out left
+}
+#cl-module #mapDG-filter-container.open{
+    left: 0px;
+    transition: 0.2s ease-in-out left
+}
+
+#cl-module #open-close-filter.open{
+    left: 300px;
+    transition: 0.2s ease-in-out left
+}
+
+#cl-module #mapDG.open{
+    width: calc(100% - 320px);
+    transform: translateX(320px);
+    transition: width 0.2s ease-in-out,  transform 0.2s ease-in-out;
+}
+#cl-module #open-close-filter p::before{
+    content: url(../img/filters.svg);
+    display: block;
+    width: 20px;
+    margin: auto;
+}
+#cl-module #open-close-filter.open p::before{
+    content: url(../img/close.svg);
+}
+#cl-module #open-close-filter p{
+    font-size: 0.7em;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 0;
+}
+
+/* ////////// FILTERS ////////// */
+#cl-module #mapDG-filter-container{
+    width: 300px;
+    min-width: 300px;
+    background-color: var(--white);
+    border-radius: 16px;
+    padding: 1em;
+    position: absolute;
+    left: -300px;
+    transition: 0.2s ease-in-out left;
+    height: 80vh;
+    max-height: 800px;
+    box-sizing: border-box;
+}
+#cl-module #mapDG-filter-container.fullscreen-filters{
+    max-height: unset;
+    overflow-y: unset;
+    border-radius: 0 16px 16px 0;
+    position: absolute;
+    z-index: 99999;
+    bottom: 0;
+} 
+
+#cl-module #mapDG-filter-container #results,
+#cl-module #mapDG-filter-container h3{
+    margin: 0 0 1em 0;
+}
+#cl-module .filter-header{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#cl-module #search-bar,
+#cl-module fieldset{
+    border: none;
+    padding: 0;
+    margin: 0 0 1em 0;
+}
+#cl-module #statut_action label{
+    position: relative;
+    bottom: 2px;
+}
+
+#cl-module #statut_action svg{
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    margin: 0 0 3px 12px;
+    vertical-align: middle;
+}
+
+#cl-module #search-field{
+    width: 100%;
+    display: flex;
+    margin-bottom: 2em;
+}
+#cl-module #seeker{
+    width: 90%;
+    padding: 0.5em 1em;
+    border-radius: 25px 0 0 25px;
+    border: 2px solid var(--deep-blue);
+}
+#cl-module #search{
+    width: 40px;
+    background-color: var(--deep-blue);
+    border-radius: 0 25px 25px 0;
+    border: 2px solid var(--deep-blue);
+    padding: 5px 7px 3px 3px;
+}
+#cl-module #type_action_container .btn.btn-default,
+#cl-module .btn.btn-default{
+    border: none;
+    background-color: var(--light-blue);
+    color: var(--deep-blue);
+    padding: 0.5em 1em;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+#cl-module #type_action_container .btn.btn-default:hover,
+#cl-module .btn.btn-default:hover{
+    background-color: var(--hover-blue);
+}
+#cl-module #access-button::before{
+    content: url(../img/handicap.svg);
+    display: inline-block;
+    width: 20px;
+    vertical-align: middle;
+    margin: 0 5px 0 0;
+}
+/* ////////// TYPES ACTIONS BUTTONs ////////// */
+#cl-module #type_action_container > div{
+    padding: 0.5em 1em 0.5em 0;
+    border-radius: 25px;
+    background-color: transparent;
+    transition: background-color 0.2s ease-in-out;
+    display: flex;
+    justify-content: flex-start;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 1em;
+}
+#cl-module #type_action_container .btn.btn-default{
+    width: fit-content;
+}
+#cl-module #type_action_container .btn.btn-default input{
+    width: 0;
+}
+#cl-module #type_action_container input {
+    appearance: none;
+    margin: 0 5px 0 0;
+    width: 15px;
+    height: 15px;
+    border: none;
+    border-radius: 50%;
+}
+#cl-module #type_action_container .checked {
+    background-color: var(--radio-type-background);
+    color: var(--radio-type-color);
+    transition: background-color 0.2s ease-in-out;
+
+}
+
+/* ////////// Reset Button ////////// */
+#cl-module #reset-button{
+    z-index: 999;
+    position: absolute;
+    bottom: 25px;
+    right: 10px;
+}
+
+/* ////////// Loader ////////// */
+.loader {
+    background: url(../img/loader.gif), #fff;
+    background-repeat: no-repeat;
+    background-position: 50%, 50%;
+    width:100%;
+    height:100%;
+    position:absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 16px;
+    opacity: 0.8;
+    z-index: 99999;
+}
+/* ////////// CLUSTER & ICON /////////// */
+#cl-module .marker-cluster-large,
+#cl-module .marker-cluster-medium,
+#cl-module .marker-cluster-small{
+    background-color: var(--deep-blue-fade);
+}
+#cl-module .marker-cluster-large div,
+#cl-module .marker-cluster-medium div,
+#cl-module .marker-cluster-small div{
+    background-color: var(--deep-blue);
+}
+#cl-module .marker-cluster div{
+    color: var(--white);
+}
+#cl-module .leaflet-div-icon{
+    background: none;
+    border: none;
+}
+#cl-module .leaflet-div-icon svg{
+    position: relative;
+    z-index: 1;
+}
+#cl-module .leaflet-div-icon .icon-shadow{
+    background-color: #000;
+    width: 30px;
+    height: 15px;
+    position: relative;
+    top: -17px;
+    border-radius: 100%;
+    filter: blur(5px);
+    opacity: 0.6;
+    z-index: 0;
+}
+/* ////////// MARKERS /////////// */
+#cl-module .leaflet-popup .prospect{
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+#cl-module .leaflet-popup .prospect svg{
+    width: 12px;
+    height: 12px;
+    padding: 3px;
+    border-radius: 15px;
+    margin-right: 5px;
+}
+#cl-module .leaflet-popup .prospect p{
+    margin: 0;
+}
+#cl-module .leaflet-popup .separator{
+    width: 70px;
+    height: 2px;
+    background-color: var(--deep-blue);
+    border-radius: 2px;
+    margin-top: 5px;
+}
+#cl-module .leaflet-container address,
+#cl-module .leaflet-container h4{
+    font-family: "Source Sans Pro";
+    font-size: 1em;
+    font-weight: 400;
+    margin: 0.5em 0;
+}
+#cl-module .leaflet-container h3{
+    font-family: "Philharmonique";
+    font-size: 1.5em;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0.5em 0;
+}
+#cl-module .leaflet-container address{
+    font-size: 1.5em;
+    font-style: normal;
+}
+/* ////////// RESPONSIVE ////////// */
+@media screen and (min-width : 1024px) {
+    #cl-module #mapDG-filter-container:not(.fullscreen-filters){
+        left: 0;
+        position: static;
+    }
+    #cl-module #mapDG:not(.fullscreen-filters) {
+        width: calc(100% - 320px);
+    }
+    #cl-module #open-close-filter:not(.fullscreen-filters){
+        display: none;
+    }
+    #cl-module #mapDG-filter-container.fullscreen-filters{
+        position: absolute;
+    } 
+}

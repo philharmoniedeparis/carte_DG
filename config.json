@@ -1,0 +1,45 @@
+[
+    {
+        "enfant" : {
+            "name" : "Philharmonie des enfants",
+            "color" : "#FED070"
+        }
+    },
+    {
+        "tournées" : {
+            "name" : "Tournées de l'Orchestre de Paris",
+            "color" : "#005BA4"
+        }
+    },
+    {
+        "Expos" : {
+            "name" : "Expositions itinérantes",
+            "color" : "#C14D34"
+        }
+    },
+    {
+        "PAD" : {
+            "name" : "Abonnés à Philharmonie à la demande",
+            "color" : "#1DC1C6"
+        }
+    },
+    {
+        "Edu" : {
+            "name" : "Projets éducatifs",
+            "color" : "#0A7A80"
+        }
+    },
+    {
+        "Démos" : {
+            "name" : "Orchestres Démos",
+            "color" : "#96C7FC"
+        }
+
+    },
+    {
+        "scène" : {
+            "name" : "Musiques en scène",
+            "color" : "#74222C"
+        }
+    }
+]
