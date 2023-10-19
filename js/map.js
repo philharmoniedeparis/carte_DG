@@ -1,12 +1,11 @@
 $(document).ready(function(){
-    // Add splash
     getData(generalMapFunction)
 })
 
 function getData(callback){
 
     fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
-    //fetch('http://localhost/philharmonie_carteDG/python/data.json')
+    //fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
         throw new Error('Network response : ' + response.statusText);
@@ -27,17 +26,15 @@ function generalMapFunction(data){
     console.log(data)
 
     // Ajout fausse configuration dans l'attente de l'API
-    const config = fakeConfig()
-
+    const config = data[0]
+    const actions = data[1]
     // Extrait la liste des types d'actions
-    const typesAction = [...new Set(data.map(item => item.action))]
+    const typesAction = [...new Set(actions.map(item => item.action))]
 
     // Tri préliminaire des données par type d'action et ajout des informations de configuration
-    const sortedData = createSortedDataObject(data, typesAction, config) 
-    console.log(sortedData)
-    //data.map(d => { if (d.action == undefined) { console.log(d)}})
-    //data.map(d => { if (d.pays == "Japon") { console.log(d)}})
-    /* const analyzeData = data => {
+    const sortedData = createSortedDataObject(actions, typesAction, config) 
+
+    const analyzeData = data => {
         console.log(data)
         var output = {}
         Object.keys(data).map(type => {
@@ -53,10 +50,10 @@ function generalMapFunction(data){
             a.download = fileName;
             a.click();
         }
-        download(JSON.stringify(output), 'dataField.json', 'text/plain');
+        //download(JSON.stringify(output), 'dataField.json', 'text/plain');
         console.log(output)
     }
-    //analyzeData(sortedData) */
+    analyzeData(sortedData)
 
 
     // Comportement responsive des filtres
@@ -66,7 +63,7 @@ function generalMapFunction(data){
     addProspectsRadioButton(data)
 
     // Complète les types d'actions
-    addTypesRadioButton(sortedData)
+    //addTypesRadioButton(sortedData)
 
     // Création de la carte
     const map = createMap()
@@ -96,10 +93,10 @@ function createSortedDataObject(data, typesAction, config) {
     typesAction.map(action => {
         if (action == undefined) { return }
         sortedData[action] = {
-            "name" : config[action].name,
+            "name" : config.filter(type => { return type.key == action} )[0].name,
             "id_API" : action,
-            "color" : config[action].color,
-            "text_color" : config[action].text_color
+            "color" : config.filter(type => { return type.key == action} )[0].color,
+            "text_color" : config.filter(type => { return type.key == action} )[0].text_color
         }
         sortedData[action]["data"] = data.filter(item => item.action == action)
     })
@@ -128,33 +125,131 @@ function createMap(){
 }
 
 function createCluster(sortedData, map) {
-
-    // Création d'un sous groupe de cluster pour filtrage ultérieur
     var parentGroup = L.markerClusterGroup({
         showCoverageOnHover: false
-    })
-    var arrayMarkers = []
-    Object.keys(sortedData).map(typeAction => {
-    
-        sortedData[typeAction].data.map(action => {
-            if (action.pays == "Japon") { 
-                console.log(action)
-                //console.log(action.latitude)
-                 }
-            if (!action.latitude && !action.longitude) { 
-                console.log(action)
-                //console.log(action.latitude)
-                return }
-            let marker = createMarker(sortedData[typeAction], action)
-            arrayMarkers.push(marker)
-        })
-        actionGroup = L.featureGroup.subGroup(parentGroup, arrayMarkers);
+    });
 
-    })
-    // demo: https://ghybs.github.io/Leaflet.MarkerCluster.LayerSupport/examples/mcgLayerSupport-controlLayers-realworld.388.html
-    // lib : https://github.com/ghybs/Leaflet.FeatureGroup.SubGroup
-    parentGroup.addTo(map)
-    actionGroup.addTo(map)
+    var subGroups = {}; // Un objet pour stocker les sous-groupes
+
+    Object.keys(sortedData).forEach(typeAction => {
+        var arrayMarkers = [];
+
+        sortedData[typeAction].data.forEach(action => {
+            if (!action.latitude && !action.longitude) { 
+                return;
+            }
+            let marker = createMarker(sortedData[typeAction], action);
+            arrayMarkers.push(marker);
+        });
+
+        // Créer un sous-groupe pour chaque type d'action
+        var actionGroup = L.featureGroup.subGroup(parentGroup, arrayMarkers);
+        subGroups[typeAction] = actionGroup; // Ajouter le sous-groupe à l'objet subGroups
+    });
+
+    // Ajouter les sous-groupes au contrôle de couches
+    var overlayMaps = {};
+    Object.keys(subGroups).forEach(typeAction => {
+        overlayMaps[typeAction] = subGroups[typeAction];
+        // Activer chaque sous-groupe par défaut
+        map.addLayer(subGroups[typeAction]);
+    });
+
+    // Créer le contrôle de couches et l'ajouter à la carte
+    var layersControl = L.control.layers(null, overlayMaps).addTo(map);
+
+    // Ajouter les boutons radio au fieldset
+    addTypesRadioButton(sortedData, layersControl, subGroups, map);
+    
+    parentGroup.addTo(map);
+}
+
+function addTypesRadioButton(sortedData, layersControl, subGroups, map) {
+    var parent = document.getElementById("type_action_container");
+
+    // Ajoutez un bouton "Toutes les actions" pour afficher tous les sous-groupes
+    var allTypesButton = document.createElement("div")
+    allTypesButton.setAttribute("class", "btn btn-default")
+
+    var allTypesInput = document.createElement("input");
+    allTypesInput.setAttribute("type", "radio");
+    allTypesInput.setAttribute("id", "all_type");
+    allTypesInput.setAttribute("name", "type_action");
+    allTypesInput.setAttribute("value", "all");
+    allTypesInput.checked = true;
+    
+    var allTypesLabel = document.createElement("label");
+    allTypesLabel.setAttribute("for", "all_type");
+    allTypesLabel.textContent = "Toutes les actions";
+
+    allTypesButton.appendChild(allTypesInput)
+    allTypesButton.appendChild(allTypesLabel)
+
+    parent.appendChild(allTypesButton);
+
+    // Ajouter un gestionnaire d'événements pour le bouton "Toutes les actions"
+    allTypesInput.addEventListener("change", function (elt) {
+        changeColorRadioButton(elt)
+        /* if (this.checked) {
+            // Activer tous les sous-groupes
+            Object.keys(subGroups).forEach(typeAction => {
+                map.addLayer(subGroups[typeAction]);
+            });
+        } */
+    });
+
+    Object.keys(sortedData).forEach(action => {
+        let container = document.createElement("div");
+        container.setAttribute("data-backColor", sortedData[action].color);
+        container.setAttribute("data-color", sortedData[action].text_color);
+
+        let input = document.createElement("input");
+        input.setAttribute("type", "radio");
+        input.setAttribute("id", action);
+        input.setAttribute("name", "type_action");
+        input.setAttribute("value", action);
+        input.style.backgroundColor = sortedData[action].color;
+        container.appendChild(input);
+
+        let label = document.createElement("label");
+        label.setAttribute("for", action);
+        label.style.left = "6px";
+        label.textContent = sortedData[action].name;
+        container.appendChild(label);
+
+        parent.appendChild(container);
+
+        // Ajouter un gestionnaire d'événements pour chaque bouton radio
+        input.addEventListener("change", function (elt) {
+            var selectedType = this.value;
+
+            changeColorRadioButton(elt)
+
+            // Activer le sous-groupe sélectionné et désactiver les autres
+            /* Object.keys(subGroups).forEach(typeAction => {
+                if (typeAction === selectedType) {
+                    map.addLayer(subGroups[typeAction]);
+                } else {
+                    map.removeLayer(subGroups[typeAction]);
+                }
+            }); */
+        });
+
+        // Sélectionnez tous les boutons radio par défaut
+        input.checked = true;
+    });
+
+
+}
+
+function changeColorRadioButton(e){
+            // Gestion de la couleur de fond
+            $("#type_action_container div").removeClass("checked")
+            var typeSelected = $(e.target).is("div") ? $(e.target) : $(e.target).parent("div")
+    
+            typeSelected.addClass("checked")
+            document.documentElement.style.setProperty('--radio-type-background', typeSelected.attr("data-backColor"));
+            document.documentElement.style.setProperty('--radio-type-color', typeSelected.attr("data-color"));
 }
 
 function createMarker(sortedData, action) {
@@ -221,27 +316,19 @@ function createPopup(action, sortedData) {
         separator.setAttribute("class", "separator")
         popupContent.appendChild(separator)
     }
-
-    // Titre conditionnel en attendant normalisation des colonnes
-    let titleText = action.nom_de_l_orchestre 
-    || action.nom_du_projet 
-    || action.nom_de_l_exposition_a_distance 
-    || action.nom_de_l_exposition_a_la_philharmonie 
-    || action.projet_ 
-    || action.nom_de_la_salle 
-    || action.nom
-
-    if (titleText == 'NA'){
-    titleText = action.nom_de_l_exposition_a_la_philharmonie 
-    }
+    
     let title = document.createElement("h3")
-    title.textContent = titleText
-    popupContent.appendChild(title)
+    title.textContent = action.nom
+    popupContent.appendChild(title) 
 
-    // Adresse  
+    let subtitle = document.createElement("h4")
+    subtitle.textContent = action.nom_orchestre
+    popupContent.appendChild(subtitle)
+
+    // Adresse 
     let adresse = document.createElement("address")
     adresse.setAttribute("class", "address-action")
-    adresse.textContent = action.sadresse
+    adresse.textContent = `${action.ville ? action.ville : ''} ${action.region ? action.region : ''} ${action.pays ? action.pays : ''}`
     popupContent.appendChild(adresse)
 
     return popupContent
@@ -334,45 +421,6 @@ function addProspectsRadioButton(data){
     }
 }
 
-function addTypesRadioButton(sortedData){
-    // Créé les options de filtrages pour chaque type d'action
-    var parent = document.getElementById("type_action_container")
-
-    Object.keys(sortedData).map(action => {
-        
-        let container = document.createElement("div")
-        container.setAttribute("data-backColor", sortedData[action].color)
-        container.setAttribute("data-color", sortedData[action].text_color)
-
-        let input = document.createElement("input")
-        input.setAttribute("type", "radio")
-        input.setAttribute("id", action)
-        input.setAttribute("name", "type_action")
-        input.setAttribute("value", action)
-        input.style.backgroundColor = sortedData[action].color
-        container.appendChild(input)
-    
-        let label = document.createElement("label")
-        label.setAttribute("for", action)
-        label.style.left = "6px"
-        label.textContent = sortedData[action].name
-        container.appendChild(label)
-    
-        parent.appendChild(container)
-
-    })
-
-    // Ajout de la clas checked sur la div parente au clique
-    $("#type_action_container div").on("click", function(e) {
-        $("#type_action_container div").removeClass("checked")
-        var typeSelected = $(e.target).is("div") ? $(e.target) : $(e.target).parent("div")
-
-        typeSelected.addClass("checked")
-        document.documentElement.style.setProperty('--radio-type-background', typeSelected.attr("data-backColor"));
-        document.documentElement.style.setProperty('--radio-type-color', typeSelected.attr("data-color"));
-    })
-}
-
 function normalize_string(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/gm, "_").toLowerCase()
 }
@@ -386,45 +434,4 @@ function getProspectIcon(sortedData = false){
         </svg>`,
         'application/xml');
     return icon
-}
-
-function fakeConfig(){
-    return {
-        "enfant" : {
-            "name" : "Philharmonie des enfants",
-            "color" : "#FED070",
-            "text_color" : "#001B3B"
-        },
-        "orchestre_de_paris" : {
-            "name" : "Tournées de l'Orchestre de Paris",
-            "color" : "#005BA4",
-            "text_color" : "#fff"
-        },
-        "expositions" : {
-            "name" : "Expositions itinérantes",
-            "color" : "#C14D34",
-            "text_color" : "#fff"
-        },
-        "pad" : {
-            "name" : "Abonnés à Philharmonie à la demande",
-            "color" : "#1DC1C6",
-            "text_color" : "#001B3B"
-        },
-        "education" : {
-            "name" : "Projets éducatifs",
-            "color" : "#0A7A80",
-            "text_color" : "#fff"
-        },
-        "demos" : {
-            "name" : "Orchestres Démos",
-            "color" : "#96C7FC",
-            "text_color" : "#001B3B"
-        },
-        "musique_en_scene" : {
-            "name" : "Musiques en scène",
-            "color" : "#74222C",
-            "text_color" : "#fff"
-        }
-    }
-    
 }
