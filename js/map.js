@@ -60,7 +60,7 @@ function generalMapFunction(data){
     responsiveFilter()
 
     // Ajout conditionnel du fieldset des prospects
-    addProspectsRadioButton(data)
+    addProspectsRadioButton(data[1])
 
     // Complète les types d'actions
     //addTypesRadioButton(sortedData)
@@ -243,32 +243,46 @@ function addTypesRadioButton(sortedData, layersControl, subGroups, map) {
 }
 
 function changeColorRadioButton(e){
-            // Gestion de la couleur de fond
-            $("#type_action_container div").removeClass("checked")
-            var typeSelected = $(e.target).is("div") ? $(e.target) : $(e.target).parent("div")
-    
-            typeSelected.addClass("checked")
-            document.documentElement.style.setProperty('--radio-type-background', typeSelected.attr("data-backColor"));
-            document.documentElement.style.setProperty('--radio-type-color', typeSelected.attr("data-color"));
+    // Gestion de la couleur de fond
+    $("#type_action_container div").removeClass("checked")
+    var typeSelected = $(e.target).is("div") ? $(e.target) : $(e.target).parent("div")
+
+    typeSelected.addClass("checked")
+    document.documentElement.style.setProperty('--radio-type-background', typeSelected.attr("data-backColor"));
+    document.documentElement.style.setProperty('--radio-type-color', typeSelected.attr("data-color"));
 }
 
 function createMarker(sortedData, action) {
+    console.log(action)
     let latitude = parseFloat(action.latitude.replace(",", "."))
     let longitude = parseFloat(action.longitude.replace(",", "."))
-    let icon = defineIcon(sortedData.color)
+    let icon = defineIcon(sortedData, action)
     let popup = createPopup(action, sortedData)
     return L.marker([latitude, longitude], {icon: icon}).bindPopup(popup).openPopup()
-    //return L.marker([longitude, latitude], {icon: icon}).bindPopup(popup).openPopup()
 }
-function defineIcon(color) {
-    var iconPath = `
+function defineIcon(sortedData, action) {
+    console.log(sortedData)
+    if (action.prospect == "oui"){
+        var iconPath = `
         <div>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.66 35.26" class="icon" fill="${color}">
-                <path d="m12.83,0C5.74,0,0,5.74,0,12.83c0,7.08,7.6,15.91,12.83,22.43,5.23-6.52,12.83-15.35,12.83-22.43S19.91,0,12.83,0"/>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.66 35.26">
+                <g>
+                <path fill="${sortedData.color}" d="m12.83,0C5.74,0,0,5.74,0,12.83c0,7.08,7.6,15.91,12.83,22.43,5.23-6.52,12.83-15.35,12.83-22.43S19.91,0,12.83,0"/>
+                <path fill="${sortedData.text_color}" d="m12.83,9.02c-.4,0-.73.33-.73.73v3.44c0,.4.33.73.73.73,0,0,0,0,0,0,0,0,0,0,0,0h1.89c.4,0,.73-.33.73-.73s-.33-.73-.73-.73h-1.17v-2.71c0-.4-.33-.73-.73-.73Z"/>
+                <path fill="${sortedData.text_color}" d="m21.82,12.46h-1.83c-.4,0-.73.33-.73.73s.33.73.73.73h1.07c-.35,3.98-3.53,7.16-7.51,7.51v-1.07c0-.4-.33-.73-.73-.73s-.73.33-.73.73v1.07c-3.98-.35-7.16-3.53-7.51-7.51h1.07c.4,0,.73-.33.73-.73s-.33-.73-.73-.73h-1.07c.35-3.98,3.53-7.16,7.51-7.51v1.07c0,.4.33.73.73.73s.73-.33.73-.73v-1.07c1.02.09,2.02.37,2.93.82l-.64.83,3.59.48-1.38-3.35-.67.87c-1.4-.74-2.97-1.14-4.56-1.14C7.47,3.47,3.11,7.83,3.11,13.19s4.36,9.72,9.72,9.72,9.72-4.36,9.72-9.72c0-.4-.33-.73-.73-.73Z"/>
+                </g>
             </svg>
             <div class="icon-shadow"></div>
         </div>`
-
+    }else{
+        var iconPath = `
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25.66 35.26" class="icon" fill="${sortedData.color}">
+                    <path d="m12.83,0C5.74,0,0,5.74,0,12.83c0,7.08,7.6,15.91,12.83,22.43,5.23-6.52,12.83-15.35,12.83-22.43S19.91,0,12.83,0"/>
+                </svg>
+                <div class="icon-shadow"></div>
+            </div>`
+    }
     return L.divIcon({
         html: iconPath,
         iconSize: [30, 30],
@@ -282,11 +296,6 @@ function createPopup(action, sortedData) {
     popupContent.setAttribute("class", 'values')
 
     // Prospect
-
-    /* !!!!!!!!!!!!!!!!!!!!!!! */
-    /* TODO : change condition */
-    /* !!!!!!!!!!!!!!!!!!!!!!! */
-
     if(action.prospect == "oui"){
         let container = document.createElement("div")
         container.setAttribute("class", "prospect")
