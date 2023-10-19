@@ -25,17 +25,12 @@ function getData(callback){
 function generalMapFunction(data){
     console.log(data)
 
-    // Ajout fausse configuration dans l'attente de l'API
-    const config = data[0]
-    const actions = data[1]
-    // Extrait la liste des types d'actions
-    const typesAction = [...new Set(actions.map(item => item.action))]
+    /* /////////// Fonctions de debuggage /////////// */
 
-    // Tri préliminaire des données par type d'action et ajout des informations de configuration
-    const sortedData = createSortedDataObject(actions, typesAction, config) 
+    window["actions"] = data[1]
+    window["dateTypes"] = []
 
     const analyzeData = data => {
-        console.log(data)
         var output = {}
         Object.keys(data).map(type => {
             output[type] = []
@@ -53,8 +48,18 @@ function generalMapFunction(data){
         //download(JSON.stringify(output), 'dataField.json', 'text/plain');
         console.log(output)
     }
-    analyzeData(sortedData)
+    //analyzeData(sortedData)
 
+    /* /////////// END Fonctions de debuggage /////////// */
+
+    // Ajout fausse configuration dans l'attente de l'API
+    const config = data[0]
+    const actions = data[1]
+    // Extrait la liste des types d'actions
+    const typesAction = [...new Set(actions.map(item => item.action))]
+
+    // Tri préliminaire des données par type d'action et ajout des informations de configuration
+    const sortedData = createSortedDataObject(actions, typesAction, config) 
 
     // Comportement responsive des filtres
     responsiveFilter()
@@ -62,14 +67,8 @@ function generalMapFunction(data){
     // Ajout conditionnel du fieldset des prospects
     addProspectsRadioButton(data[1])
 
-    // Complète les types d'actions
-    //addTypesRadioButton(sortedData)
-
     // Création de la carte
     const map = createMap()
-
-    /* // Test marker japon
-    L.marker([35.6828387, 139.7594549]).addTo(map) */
 
     // Création des clusters
     createCluster(sortedData, map)
@@ -86,6 +85,7 @@ function generalMapFunction(data){
     - filtrer les datas, reshape and regenerate (prospect & input text)
     - type d'action subgroup
     */
+   //console.log(window.dateTypes)
 }
 
 function createSortedDataObject(data, typesAction, config) {
@@ -253,7 +253,6 @@ function changeColorRadioButton(e){
 }
 
 function createMarker(sortedData, action) {
-    console.log(action)
     let latitude = parseFloat(action.latitude.replace(",", "."))
     let longitude = parseFloat(action.longitude.replace(",", "."))
     let icon = defineIcon(sortedData, action)
@@ -261,7 +260,6 @@ function createMarker(sortedData, action) {
     return L.marker([latitude, longitude], {icon: icon}).bindPopup(popup).openPopup()
 }
 function defineIcon(sortedData, action) {
-    console.log(sortedData)
     if (action.prospect == "oui"){
         var iconPath = `
         <div>
@@ -309,6 +307,7 @@ function createPopup(action, sortedData) {
 
         popupContent.appendChild(container)
 
+        // Séparateur
         let separator = document.createElement("div")
         separator.setAttribute("class", "separator")
         popupContent.appendChild(separator)
@@ -320,25 +319,117 @@ function createPopup(action, sortedData) {
     typeAction.textContent = sortedData.name
     popupContent.appendChild(typeAction)
 
+    // Séparateur
     if(action.prospect == "non"){
         let separator = document.createElement("div")
         separator.setAttribute("class", "separator")
+        separator.setAttribute("style", `background-color: ${sortedData.color}`)
         popupContent.appendChild(separator)
     }
     
+    // Titre Cartel
     let title = document.createElement("h3")
     title.textContent = action.nom
     popupContent.appendChild(title) 
 
-    let subtitle = document.createElement("h4")
-    subtitle.textContent = action.nom_orchestre
-    popupContent.appendChild(subtitle)
+    // Sous titre Cartel
+    var subtitleString = action.nom_orchestre || action.nom_projet || action.nom_expo || action.nom_expo_distance || action.nom_projet
+    if (subtitleString){
+        let subtitle = document.createElement("h4")
+        subtitle.textContent = subtitleString
+        popupContent.appendChild(subtitle)
+    }
 
-    // Adresse 
-    let adresse = document.createElement("address")
-    adresse.setAttribute("class", "address-action")
-    adresse.textContent = `${action.ville ? action.ville : ''} ${action.region ? action.region : ''} ${action.pays ? action.pays : ''}`
-    popupContent.appendChild(adresse)
+    // Type COOP Cartel
+    if (action.type_orchestre){
+        let type_orchestre = document.createElement("p")
+        type_orchestre.innerHTML = `<b>Type d'orchestre : </b>${action.type_orchestre}`
+        popupContent.appendChild(type_orchestre)
+    }
+
+    if (action.type_cooperation){
+        let typeCooperation = document.createElement("p")
+        typeCooperation.innerHTML = `<b>Type de coopération : </b>${action.type_cooperation}`
+        popupContent.appendChild(typeCooperation)
+    }
+
+    // Date Cartel
+    if (action.date){
+        //window.dateTypes.push(action.date)
+        //window.dateTypes.push(action.date_fin)
+        let date = document.createElement("p")
+        date.innerHTML = `<b>Date : </b>${action.date} ${action.date_fin ? "| " + action.date_fin : ""}`
+        popupContent.appendChild(date)
+    }
+    
+    
+    // Saison Cartel
+    if (action.saison){
+        let saison = document.createElement("p")
+        saison.innerHTML = `<b>Saison : </b>${action.saison}`
+        popupContent.appendChild(saison)
+    }
+
+    // Nombre_structures Cartel
+    if (action.nombre_structures){
+        let text = parseInt(action.nombre_structures) == 1 ? " structure abonnée" : " structures abonnées"
+        let nombre_structures = document.createElement("h4")
+        nombre_structures.textContent = action.nombre_structures + text
+        popupContent.appendChild(nombre_structures)
+    }
+    
+    // Services Cartel
+    if (action.services){
+        let p = "Accès sur place"
+        let a = "Accès à domicile"
+        let servicesString = "<b>Services : </b>"
+        switch (action.services) {
+            case "A": servicesString += a
+            break;
+            case "P": servicesString += p
+            break;
+            case "AP": servicesString += a + " & " + p
+            break;
+            default: servicesString = ""
+            break;
+        }
+
+        let services = document.createElement("p")
+        services.innerHTML = servicesString
+        popupContent.appendChild(services)
+    }
+
+    // Adresse Cartel 
+    let adresseString = [...new Set([
+        action.adresse, 
+        action.complement_adresse, 
+        action.code_postal,
+        action.ville,
+    ])].filter( Boolean ).join(" ")
+
+    let stateString = [...new Set([
+        action.region, 
+        action.departement, 
+        action.etat, 
+        action.pays
+    ])].filter( Boolean ).join(", ")
+
+    let adresseElt = document.createElement("address")
+    adresseElt.setAttribute("class", "address-action")
+    adresseElt.innerHTML = "<b>Adresse : </b>" + adresseString + (adresseString ? ", " : "") + stateString
+    popupContent.appendChild(adresseElt)
+
+    // Lien Cartel
+    if (action.lien){
+        let lien = document.createElement("a")
+        lien.setAttribute("class", "btn btn-default btn-externe")
+        lien.setAttribute("style", `background-color : ${sortedData.color}; color : ${sortedData.text_color};`)
+        lien.setAttribute("href", action.lien)
+        lien.setAttribute("title", "Aller sur la page de l'action dans un nouvel onglet")
+        lien.setAttribute("target", "_blank")
+        lien.textContent = "Informations"
+        popupContent.appendChild(lien)
+    }
 
     return popupContent
 }
@@ -443,4 +534,8 @@ function getProspectIcon(sortedData = false){
         </svg>`,
         'application/xml');
     return icon
+}
+
+function checkAction(city){
+    return window.actions.filter(action => { return action.ville == city})
 }

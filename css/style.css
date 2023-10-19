@@ -79,7 +79,6 @@ body{
     justify-content: space-between;
 }
 
-
 /* ////////// MAP ////////// */
 
 #cl-module #mapDG{
@@ -344,8 +343,6 @@ body{
 #cl-module .leaflet-container address,
 #cl-module .leaflet-container h4{
     font-family: "Source Sans Pro";
-    font-size: 1em;
-    font-weight: 400;
     margin: 0.5em 0;
 }
 #cl-module .leaflet-container h3{
@@ -356,9 +353,25 @@ body{
     margin: 0.5em 0;
 }
 #cl-module .leaflet-container address{
-    font-size: 1.5em;
+    font-size: 1.2em;
     font-style: normal;
+    margin-bottom: 1.5em;
+    /* font-weight: bold; */
 }
+#cl-module .leaflet-container h4{
+    font-size: 1.2em;
+    text-transform: unset;
+    margin: 0.5em 0;
+    font-weight: bold;
+}
+#cl-module a{
+    text-decoration: none;
+}
+#cl-module .leaflet-container p{
+    font-size: 1.2em;
+    margin: 0 0 0.5em 0;
+}
+
 /* ////////// CONTROLS ////////// */
 .leaflet-control-layers .leaflet-control-layers-toggle{
     display: none;
