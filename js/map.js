@@ -25,6 +25,9 @@ function getData(callback){
 function generalMapFunction(data){
     console.log(data)
 
+    // Variable de sauvegarde des marqueurs
+    window["markers"] = []
+
     /* /////////// Fonctions de debuggage /////////// */
 
     window["actions"] = data[1]
@@ -60,18 +63,15 @@ function generalMapFunction(data){
 
     // Tri préliminaire des données par type d'action et ajout des informations de configuration
     const sortedData = createSortedDataObject(actions, typesAction, config) 
-
+    console.log(sortedData)
     // Comportement responsive des filtres
     responsiveFilter()
-
-    // Ajout conditionnel du fieldset des prospects
-    addProspectsRadioButton(data[1])
 
     // Création de la carte
     const map = createMap()
 
     // Création des clusters
-    createCluster(sortedData, map)
+    createCluster(sortedData, actions, map)
 
     // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
     document.addEventListener('fullscreenchange', onFullScreenChange);
@@ -124,7 +124,7 @@ function createMap(){
     return map
 }
 
-function createCluster(sortedData, map) {
+function createCluster(sortedData, actions, map) {
     var parentGroup = L.markerClusterGroup({
         showCoverageOnHover: false
     });
@@ -139,12 +139,15 @@ function createCluster(sortedData, map) {
                 return;
             }
             let marker = createMarker(sortedData[typeAction], action);
+            marker["prospect"] = action.prospect
             arrayMarkers.push(marker);
         });
 
         // Créer un sous-groupe pour chaque type d'action
         var actionGroup = L.featureGroup.subGroup(parentGroup, arrayMarkers);
         subGroups[typeAction] = actionGroup; // Ajouter le sous-groupe à l'objet subGroups
+        console.log(typeAction )
+        console.log(subGroups[typeAction] )
     });
 
     // Ajouter les sous-groupes au contrôle de couches
@@ -160,6 +163,9 @@ function createCluster(sortedData, map) {
 
     // Ajouter les boutons radio au fieldset
     addTypesRadioButton(sortedData, layersControl, subGroups, map);
+
+    // Ajout conditionnel du fieldset des prospects
+    addProspectsRadioButton(actions, subGroups, map)
     
     parentGroup.addTo(map);
 }
@@ -189,13 +195,14 @@ function addTypesRadioButton(sortedData, layersControl, subGroups, map) {
 
     // Ajouter un gestionnaire d'événements pour le bouton "Toutes les actions"
     allTypesInput.addEventListener("change", function (elt) {
+        clickPatch()
         changeColorRadioButton(elt)
-        /* if (this.checked) {
+        if (this.checked) {
             // Activer tous les sous-groupes
             Object.keys(subGroups).forEach(typeAction => {
                 map.addLayer(subGroups[typeAction]);
             });
-        } */
+        }
     });
 
     Object.keys(sortedData).forEach(action => {
@@ -221,27 +228,127 @@ function addTypesRadioButton(sortedData, layersControl, subGroups, map) {
 
         // Ajouter un gestionnaire d'événements pour chaque bouton radio
         input.addEventListener("change", function (elt) {
+            clickPatch()
             var selectedType = this.value;
 
             changeColorRadioButton(elt)
 
             // Activer le sous-groupe sélectionné et désactiver les autres
-            /* Object.keys(subGroups).forEach(typeAction => {
+            Object.keys(subGroups).forEach(typeAction => {
                 if (typeAction === selectedType) {
                     map.addLayer(subGroups[typeAction]);
                 } else {
                     map.removeLayer(subGroups[typeAction]);
                 }
-            }); */
+            });
         });
 
         // Sélectionnez tous les boutons radio par défaut
         input.checked = true;
     });
-
-
 }
 
+function addProspectsRadioButton(actions, subGroups, map) {
+    // S'il existe une entrée prospect, créé le fieldset radio button dans le filtre
+    if (actions.some(e => e.prospect === "oui")) {
+
+        let fieldset = document.createElement("fieldset")
+        fieldset.setAttribute("id", "statut_action")
+
+        createField("all_statut", "Toutes les actions", true)
+        createField("prospects", "Prospects")
+        createField("en_cours", "Actions en cours")
+
+        function createField(id, text, checked = false) {
+            let container = document.createElement("div")
+
+            let input = document.createElement("input")
+            input.setAttribute("type", "radio")
+            input.setAttribute("id", id)
+            input.setAttribute("name", "statut_action")
+            input.setAttribute("value", id)
+            if(checked) {
+                input.setAttribute("checked", "checked")
+            }
+            container.appendChild(input)
+
+            let label = document.createElement("label")
+            label.setAttribute("for", id)
+            label.style.left = "6px"
+            label.textContent = text
+            container.appendChild(label)
+
+            if (id == "prospects") {
+                let icon = getProspectIcon()
+                container.appendChild(container.ownerDocument.importNode(icon.documentElement, true))
+            }
+
+            fieldset.appendChild(container)
+        }
+
+        let sibbling = document.getElementById("search-bar")
+        let parent = document.getElementById("mapDG-filter-container")
+        parent.insertBefore(fieldset, sibbling)
+
+
+
+        fieldset.addEventListener("change", function () {
+            var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
+
+            //clickPatch()
+
+            // Filtrer les marqueurs en fonction de la sélection "Statut" et de la sélection du type d'action
+            Object.keys(subGroups).forEach(typeAction => {
+                //var markers = window.markersGroups[typeAction].getLayers();
+                window.markers.forEach(marker => {
+                    switch (selectedStatut) {
+                        case "all_statut":
+                            if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
+                                subGroups[typeAction].addLayer(marker);
+                            }
+                            break;
+                        case "prospects":
+                            if (marker.prospect == "oui") {
+                                if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
+                                    subGroups[typeAction].addLayer(marker);
+                                }
+                            } else {
+                                if (subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
+                                    subGroups[typeAction].removeLayer(marker);
+                                }
+                            }
+                            break;
+                        case "en_cours":
+                            if (marker.prospect == "non") {
+                                if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
+                                    subGroups[typeAction].addLayer(marker);
+                                }
+                            } else {
+                                if (subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
+                                    subGroups[typeAction].removeLayer(marker);
+                                }
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                });
+            });
+
+        })
+    }
+}
+
+function clickPatch(){
+    const selectedStatut = document.querySelector('input[name="statut_action"]:checked')
+    let radios = $('input[name="statut_action"]')
+    console.log(radios)
+
+    radios.map(index => { 
+        radios[index].checked = true
+    })
+    selectedStatut.checked = true
+}
 function changeColorRadioButton(e){
     // Gestion de la couleur de fond
     $("#type_action_container div").removeClass("checked")
@@ -257,7 +364,10 @@ function createMarker(sortedData, action) {
     let longitude = parseFloat(action.longitude.replace(",", "."))
     let icon = defineIcon(sortedData, action)
     let popup = createPopup(action, sortedData)
-    return L.marker([latitude, longitude], {icon: icon}).bindPopup(popup).openPopup()
+    let marker = L.marker([latitude, longitude], {icon: icon}).bindPopup(popup).openPopup()
+    marker["typeAction"] = action.action
+    window.markers.push(marker)
+    return marker
 }
 function defineIcon(sortedData, action) {
     if (action.prospect == "oui"){
@@ -479,47 +589,6 @@ function onFullScreenChange() {
     $(buttonElement).toggleClass("fullscreen-filters")
 }
 
-
-function addProspectsRadioButton(data){
-    // S'il existe une entrée prospect, créé le fieldset radio button dans le filtre
-    if (data.some(e => e.prospect === "oui")) {
-
-        let fieldset = document.createElement("fieldset")
-        fieldset.setAttribute("id", "statut_action")
-
-        createField("all_statut", "Toutes les actions")
-        createField("prospects", "Prospects")
-        createField("en_cours", "Actions en cours")
-
-        function createField(id, text){
-            let container = document.createElement("div")
-
-            let input = document.createElement("input")
-            input.setAttribute("type", "radio")
-            input.setAttribute("id", id)
-            input.setAttribute("name", "statut_action")
-            input.setAttribute("value", id)
-            container.appendChild(input)
-
-            let label = document.createElement("label")
-            label.setAttribute("for", id)
-            label.style.left = "6px"
-            label.textContent = text
-            container.appendChild(label)
-
-            if(id == "prospects"){
-                let icon = getProspectIcon()
-                container.appendChild(container.ownerDocument.importNode(icon.documentElement, true))
-            }
-    
-            fieldset.appendChild(container)
-        }
-
-        let sibbling = document.getElementById("search-bar")
-        let parent = document.getElementById("mapDG-filter-container")
-        parent.insertBefore(fieldset, sibbling)
-    }
-}
 
 function normalize_string(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/gm, "_").toLowerCase()
