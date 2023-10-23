@@ -113,7 +113,7 @@ function createMap(){
         },
         worldCopyJump: true,
         scrollWheelZoom: true, 
-        minZoom :  1.5,
+        minZoom :  2,
         maxZoom: 12,
     }).setView(initial_view.latlng, initial_view.zoom); 
   
@@ -140,14 +140,12 @@ function createCluster(sortedData, actions, map) {
             }
             let marker = createMarker(sortedData[typeAction], action);
             marker["prospect"] = action.prospect
+            marker["nom"] = action.nom
             arrayMarkers.push(marker);
         });
-
         // Créer un sous-groupe pour chaque type d'action
         var actionGroup = L.featureGroup.subGroup(parentGroup, arrayMarkers);
         subGroups[typeAction] = actionGroup; // Ajouter le sous-groupe à l'objet subGroups
-        console.log(typeAction )
-        console.log(subGroups[typeAction] )
     });
 
     // Ajouter les sous-groupes au contrôle de couches
@@ -195,7 +193,6 @@ function addTypesRadioButton(sortedData, layersControl, subGroups, map) {
 
     // Ajouter un gestionnaire d'événements pour le bouton "Toutes les actions"
     allTypesInput.addEventListener("change", function (elt) {
-        clickPatch()
         changeColorRadioButton(elt)
         if (this.checked) {
             // Activer tous les sous-groupes
@@ -228,7 +225,6 @@ function addTypesRadioButton(sortedData, layersControl, subGroups, map) {
 
         // Ajouter un gestionnaire d'événements pour chaque bouton radio
         input.addEventListener("change", function (elt) {
-            clickPatch()
             var selectedType = this.value;
 
             changeColorRadioButton(elt)
@@ -290,48 +286,45 @@ function addProspectsRadioButton(actions, subGroups, map) {
         let parent = document.getElementById("mapDG-filter-container")
         parent.insertBefore(fieldset, sibbling)
 
-
-
         fieldset.addEventListener("change", function () {
             var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
-
-            //clickPatch()
 
             // Filtrer les marqueurs en fonction de la sélection "Statut" et de la sélection du type d'action
             Object.keys(subGroups).forEach(typeAction => {
                 //var markers = window.markersGroups[typeAction].getLayers();
                 window.markers.forEach(marker => {
+                    //checkMarker(typeAction, remove = false)
                     switch (selectedStatut) {
                         case "all_statut":
-                            if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
-                                subGroups[typeAction].addLayer(marker);
-                            }
+                            checkMarker(typeAction, remove = false)
                             break;
                         case "prospects":
+
                             if (marker.prospect == "oui") {
-                                if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
-                                    subGroups[typeAction].addLayer(marker);
-                                }
+                                checkMarker(typeAction, remove = false)
                             } else {
-                                if (subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
-                                    subGroups[typeAction].removeLayer(marker);
-                                }
+                                checkMarker(typeAction, remove = true)
                             }
                             break;
                         case "en_cours":
                             if (marker.prospect == "non") {
-                                if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
-                                    subGroups[typeAction].addLayer(marker);
-                                }
+                                checkMarker(typeAction, remove = false)
                             } else {
-                                if (subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
-                                    subGroups[typeAction].removeLayer(marker);
-                                }
+                                checkMarker(typeAction, remove = true)
                             }
                             break;
-                        default:
-                            break;
                     }
+                    function checkMarker(typeAction, remove = false){
+                        if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
+                            subGroups[typeAction].addLayer(marker);
+                        }
+                        else if(remove == true && (subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction)){
+                            subGroups[typeAction].removeLayer(marker);
+                        }
+                    }  
+
+                    
+
                 });
             });
 
@@ -339,16 +332,6 @@ function addProspectsRadioButton(actions, subGroups, map) {
     }
 }
 
-function clickPatch(){
-    const selectedStatut = document.querySelector('input[name="statut_action"]:checked')
-    let radios = $('input[name="statut_action"]')
-    console.log(radios)
-
-    radios.map(index => { 
-        radios[index].checked = true
-    })
-    selectedStatut.checked = true
-}
 function changeColorRadioButton(e){
     // Gestion de la couleur de fond
     $("#type_action_container div").removeClass("checked")
