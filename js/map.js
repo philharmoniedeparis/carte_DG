@@ -4,8 +4,8 @@ $(document).ready(function(){
 
 function getData(callback){
 
-    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
-    //fetch('./python/data.json')
+    //fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
+    fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
         throw new Error('Network response : ' + response.statusText);
@@ -29,14 +29,23 @@ function generalMapFunction(data){
 
     /* /////////// Fonctions de debuggage /////////// */
 
-    window["actions"] = data[1]
-    window["dateTypes"] = []
-
-    const analyzeData = data => {
+    const analyzeData = (sortedData, data) => {
         var output = {}
-        Object.keys(data).map(type => {
+        output["general"] = {}
+        output["general"]["total"] = data.length
+        output["general"]["prospect"] = data.filter(item => { return item.prospect == "oui" }).length
+        output["general"]["en_cours"] = data.filter(item => { return item.prospect == "non" }).length
+        output["general"]["no_loc"] = data.filter(item => { return item.latitude == undefined }).length
+
+        Object.keys(sortedData).map(type => {
             output[type] = []
-            Object.keys(data[type].data[0]).map(field => { output[type].push(field) })
+            output[type]["field"] = []
+            output[type]["count"] = {}
+            output[type]["count"]["total"] = sortedData[type].data.length
+            output[type]["count"]["prospect"] = sortedData[type].data.filter(item => { return item.prospect == "oui" }).length
+            output[type]["count"]["en_cours"] = sortedData[type].data.filter(item => { return item.prospect == "non" }).length
+
+            Object.keys(sortedData[type].data[0]).map(field => { output[type].field.push(field) })
             
             
         })
@@ -50,19 +59,24 @@ function generalMapFunction(data){
         //download(JSON.stringify(output), 'dataField.json', 'text/plain');
         console.log(output)
     }
-    //analyzeData(sortedData)
 
     /* /////////// END Fonctions de debuggage /////////// */
 
-    // Ajout fausse configuration dans l'attente de l'API
     const config = data[0]
     const actions = data[1]
+
+    // Dataset initial
+    window["actions"] = data[1]
+
     // Extrait la liste des types d'actions
     const typesAction = [...new Set(actions.map(item => item.action))]
 
     // Tri préliminaire des données par type d'action et ajout des informations de configuration
     const sortedData = createSortedDataObject(actions, typesAction, config) 
     console.log(sortedData)
+
+    analyzeData(sortedData, actions)
+
     // Comportement responsive des filtres
     responsiveFilter()
 
@@ -79,18 +93,9 @@ function generalMapFunction(data){
     // Création du bouton Réinitialiser les filtres
     createResetButton()
 
-    // Initialisation du nombre de résultats
-    updateResultsCounter(actions.length)
-
     // Recherche plein texte
     searchBox(actions, typesAction, config, map)
-    /* 
-    NOTE 
-    - Générer les marqueurs en fonction des données d'actions,
-    - filtrer les datas, reshape and regenerate (prospect & input text)
-    - type d'action subgroup
-    */
-   //console.log(window.dateTypes)
+
 }
 
 function createSortedDataObject(data, typesAction, config) {
@@ -125,10 +130,13 @@ function createMap(){
         minZoom :  2,
         maxZoom: 12,
     }).setView(initial_view.latlng, initial_view.zoom); 
-  
-    L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    
+    L.tileLayer('https://tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=YCEYIYWB5ZcUuCYc2XQe9fGjttHukDxdSd2wqzlA7mhBwMK8SXM9h3RGqxtZzuna', {}).addTo(map);
+    map.attributionControl.addAttribution("<a href=\"https://www.jawg.io\" target=\"_blank\">&copy; Jawg</a> - <a href=\"https://www.openstreetmap.org\" target=\"_blank\">&copy; OpenStreetMap</a>&nbsp;contributors")
+    
+    /* L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map)
+    }).addTo(map) */
 
     return map
 }
@@ -228,9 +236,12 @@ function createPopup(action, sortedData) {
     popupContent.appendChild(title) 
 
     // Sous titre Cartel
-    var subtitleString = action.nom_orchestre || action.nom_projet || action.nom_expo || action.nom_expo_distance || action.nom_projet
+    var subtitleString = action.nom_orchestre || action.nom_projet || action.nom_expo || action.nom_expo_distance
     if (subtitleString){
         let subtitle = document.createElement("h4")
+        if(action.action == "Production"){
+            subtitleString = "Production : " + subtitleString
+        }
         subtitle.textContent = subtitleString
         popupContent.appendChild(subtitle)
     }
@@ -251,10 +262,17 @@ function createPopup(action, sortedData) {
     // Date Cartel
     if (action.date){
         let date = document.createElement("p")
-        date.innerHTML = `<b>Date : </b>${action.date} ${action.date_fin ? "| " + action.date_fin : ""}`
+        let date_debut = simplifyDate(action.date)
+        let date_fin = simplifyDate(action.date_fin)
+        date.innerHTML = `<b>Date : </b>${date_debut} ${date_fin && (date_fin != date_debut) ? "| " + date_fin : ""}`
         popupContent.appendChild(date)
     }
-    
+    function simplifyDate(str){
+        if (str){
+            return str.replace(/^[0-9]{2}(?!\/[0-9]{4})\/|[0-9]{2}:[0-9]{2}:[0-9]{2}/gm, "")
+        }
+        return undefined
+    }
     // Saison Cartel
     if (action.saison){
         let saison = document.createElement("p")
@@ -368,13 +386,45 @@ function createCluster(sortedData, actions, map, selectedType = "all_type", sele
 
     // Ajout conditionnel du fieldset des prospects
     addProspectsRadioButton(actions, subGroups, map, selectedStatut)
+
+    // Initialise results counter
+    updateResultsCounter(subGroups, selectedType, selectedStatut)
+   
     
     parentGroup.addTo(map)
 
     return parentGroup
 }
 
-function updateResultsCounter(count){
+function updateResultsCounter(subGroups, selectedType, selectedStatut){
+
+    if(!selectedType){ 
+        selectedType = document.querySelector('input[name="type_action"]:checked').value || undefined }
+
+    if(!selectedStatut){ 
+        selectedStatut = document.querySelector('input[name="statut_action"]:checked').value || undefined }
+
+    var count = (function () {
+        // Compte pour tous les types
+        if (!selectedType || selectedType == "all_type"){
+            var count = 0
+            Object.keys(subGroups).map(typeAction => {
+                count += subGroups[typeAction].getLayers().length
+            })
+            return count
+        }
+
+        // Si un type est sélectionné et le statut prospect, compte tous les prospects
+        if (selectedStatut && selectedStatut  == "prospect"){
+            return subGroups[selectedType].getLayers().filter(marker => { return marker.data.prospect == "oui" }).length }
+
+        // Si un type est sélectionné et le statut en_cours, compte tous les en_cours
+        if (selectedStatut && selectedStatut  == "en_cours"){
+            return subGroups[selectedType].getLayers().filter(marker => { return marker.data.prospect == "non" }).length }
+
+        // Compte toutes les actions
+        return subGroups[selectedType].getLayers().length
+    })()
     $("#results b").text(count)
 }
 
@@ -412,7 +462,9 @@ function addTypesRadioButton(sortedData, layersControl, subGroups, map, selected
             // Activer tous les sous-groupes
             Object.keys(subGroups).forEach(typeAction => {
                 map.addLayer(subGroups[typeAction]);
-            });
+            })
+            // Update results counter
+            updateResultsCounter(subGroups)
         }
     });
 
@@ -447,15 +499,18 @@ function addTypesRadioButton(sortedData, layersControl, subGroups, map, selected
             var selectedType = this.value;
 
             changeColorRadioButton(elt)
-
             // Activer le sous-groupe sélectionné et désactiver les autres
             Object.keys(subGroups).forEach(typeAction => {
                 if (typeAction === selectedType) {
-                    map.addLayer(subGroups[typeAction]);
+                    map.addLayer(subGroups[typeAction])
+
+                    // Update results counter
+                    updateResultsCounter(subGroups) 
+
                 } else {
                     map.removeLayer(subGroups[typeAction]);
                 }
-            });
+            })               
         })
     });
 }
@@ -473,7 +528,7 @@ function addProspectsRadioButton(actions, subGroups, map, selectedStatut) {
     $("#prospect-filter").empty()
 
     // S'il existe une entrée prospect, créé le fieldset radio button dans le filtre
-    if (!actions.some(e => e.prospect === "oui")) { return }
+    if (!window.actions.some(e => e.prospect === "oui")) { return }
 
     let fieldset = document.createElement("fieldset")
     fieldset.setAttribute("id", "statut_action")
@@ -484,16 +539,18 @@ function addProspectsRadioButton(actions, subGroups, map, selectedStatut) {
 
     let parent = document.getElementById("prospect-filter")
     parent.appendChild(fieldset)
-    setSelectedStatut(selectedStatut)
+    setSelectedStatut(selectedStatut, actions)
 
     fieldset.addEventListener("change", function () {
         var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
-        setSelectedStatut(selectedStatut)
+        setSelectedStatut(selectedStatut, actions)
     })
     
     function setSelectedStatut(selectedStatut){
+
         // Filtrer les marqueurs en fonction de la sélection "Statut" et de la sélection du type d'action
         Object.keys(subGroups).forEach(typeAction => {
+            
             window.markers.forEach(marker => {
                 if(selectedStatut == "all_statut"){
                     checkMarker(marker, subGroups, typeAction)
@@ -507,7 +564,9 @@ function addProspectsRadioButton(actions, subGroups, map, selectedStatut) {
                     checkMarker(marker, subGroups, typeAction, remove)
                 }  
             })
+            updateResultsCounter(subGroups)
         })
+        
     }
 }
 
@@ -552,9 +611,6 @@ function searchBox(actions, typesAction, config, map) {
         var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
         var selectedType = document.querySelector('input[name="type_action"]:checked').value
 
-        console.log(selectedStatut, selectedType)
-        console.log(map)
-
         // Réinitialisation de la carte pour intégrer le dataset filtré
         if (map == undefined) { return }
         map.off()
@@ -564,9 +620,8 @@ function searchBox(actions, typesAction, config, map) {
         map = createMap()
 
         // Filtrer le dataset
-        var filterQuery = filterSearch(actions, map)
+        var filterQuery = filterSearch(actions)
         filteredSortedData = createSortedDataObject(filterQuery.filtered, typesAction, config)
-        console.log(filteredSortedData)
 
         // Création des nouveaux clusters
         createCluster(filteredSortedData, filterQuery.filtered, map, selectedType, selectedStatut) 
@@ -577,12 +632,9 @@ function searchBox(actions, typesAction, config, map) {
         // Création du bouton Réinitialiser les filtres
         //createResetButton()
 
-        // Initialisation du nombre de résultats
-        updateResultsCounter(filterQuery.filtered.length)
-
     })
 
-function filterSearch(actions, subGroups, map) {
+function filterSearch(actions) {
 
     var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
     // Traitement de la recherche avec prise en charge de la recherche exacte ("lorem")
@@ -595,7 +647,6 @@ function filterSearch(actions, subGroups, map) {
     } else {
         searchTerms.toLowerCase().split(' ').map(q => queryReg.push(`(?=.*${q})`))
     }
-    console.log(queryReg)
     //Data filter method
     var filtered = []
 

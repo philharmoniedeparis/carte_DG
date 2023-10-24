@@ -176,6 +176,10 @@ body{
     padding: 0;
     margin: 0 0 1em 0;
 }
+#cl-module fieldset > div input,
+#cl-module fieldset > div label{
+    cursor: pointer;
+}
 #cl-module #statut_action label{
     position: relative;
     bottom: 2px;
