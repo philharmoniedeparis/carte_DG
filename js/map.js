@@ -25,8 +25,7 @@ function getData(callback){
 function generalMapFunction(data){
     console.log(data)
 
-    // Variable de sauvegarde des marqueurs
-    window["markers"] = []
+
 
     /* /////////// Fonctions de debuggage /////////// */
 
@@ -68,7 +67,8 @@ function generalMapFunction(data){
     responsiveFilter()
 
     // Création de la carte
-    const map = createMap()
+    var map = createMap()
+    
 
     // Création des clusters
     createCluster(sortedData, actions, map)
@@ -79,6 +79,11 @@ function generalMapFunction(data){
     // Création du bouton Réinitialiser les filtres
     createResetButton()
 
+    // Initialisation du nombre de résultats
+    updateResultsCounter(actions.length)
+
+    // Recherche plein texte
+    searchBox(actions, typesAction, config, map)
     /* 
     NOTE 
     - Générer les marqueurs en fonction des données d'actions,
@@ -104,6 +109,10 @@ function createSortedDataObject(data, typesAction, config) {
 }
 
 function createMap(){
+
+    // Variable de sauvegarde des marqueurs
+    window["markers"] = []
+
     // Initialisation de la carte
     const initial_view = { latlng : [0,0], zoom : 2 }
     const map = L.map('mapDG', { 
@@ -122,214 +131,6 @@ function createMap(){
     }).addTo(map)
 
     return map
-}
-
-function createCluster(sortedData, actions, map) {
-    var parentGroup = L.markerClusterGroup({
-        showCoverageOnHover: false
-    });
-
-    var subGroups = {}; // Un objet pour stocker les sous-groupes
-
-    Object.keys(sortedData).forEach(typeAction => {
-        var arrayMarkers = [];
-
-        sortedData[typeAction].data.forEach(action => {
-            if (!action.latitude && !action.longitude) { 
-                return;
-            }
-            let marker = createMarker(sortedData[typeAction], action);
-            marker["prospect"] = action.prospect
-            marker["nom"] = action.nom
-            arrayMarkers.push(marker);
-        });
-        // Créer un sous-groupe pour chaque type d'action
-        var actionGroup = L.featureGroup.subGroup(parentGroup, arrayMarkers);
-        subGroups[typeAction] = actionGroup; // Ajouter le sous-groupe à l'objet subGroups
-    });
-
-    // Ajouter les sous-groupes au contrôle de couches
-    var overlayMaps = {};
-    Object.keys(subGroups).forEach(typeAction => {
-        overlayMaps[typeAction] = subGroups[typeAction];
-        // Activer chaque sous-groupe par défaut
-        map.addLayer(subGroups[typeAction]);
-    });
-
-    // Créer le contrôle de couches et l'ajouter à la carte
-    var layersControl = L.control.layers(null, overlayMaps).addTo(map);
-
-    // Ajouter les boutons radio au fieldset
-    addTypesRadioButton(sortedData, layersControl, subGroups, map);
-
-    // Ajout conditionnel du fieldset des prospects
-    addProspectsRadioButton(actions, subGroups, map)
-    
-    parentGroup.addTo(map);
-}
-
-function addTypesRadioButton(sortedData, layersControl, subGroups, map) {
-    var parent = document.getElementById("type_action_container");
-
-    // Ajoutez un bouton "Toutes les actions" pour afficher tous les sous-groupes
-    var allTypesButton = document.createElement("div")
-    allTypesButton.setAttribute("class", "btn btn-default")
-
-    var allTypesInput = document.createElement("input");
-    allTypesInput.setAttribute("type", "radio");
-    allTypesInput.setAttribute("id", "all_type");
-    allTypesInput.setAttribute("name", "type_action");
-    allTypesInput.setAttribute("value", "all");
-    allTypesInput.checked = true;
-    
-    var allTypesLabel = document.createElement("label");
-    allTypesLabel.setAttribute("for", "all_type");
-    allTypesLabel.textContent = "Toutes les actions";
-
-    allTypesButton.appendChild(allTypesInput)
-    allTypesButton.appendChild(allTypesLabel)
-
-    parent.appendChild(allTypesButton);
-
-    // Ajouter un gestionnaire d'événements pour le bouton "Toutes les actions"
-    allTypesInput.addEventListener("change", function (elt) {
-        changeColorRadioButton(elt)
-        if (this.checked) {
-            // Activer tous les sous-groupes
-            Object.keys(subGroups).forEach(typeAction => {
-                map.addLayer(subGroups[typeAction]);
-            });
-        }
-    });
-
-    Object.keys(sortedData).forEach(action => {
-        let container = document.createElement("div");
-        container.setAttribute("data-backColor", sortedData[action].color);
-        container.setAttribute("data-color", sortedData[action].text_color);
-
-        let input = document.createElement("input");
-        input.setAttribute("type", "radio");
-        input.setAttribute("id", action);
-        input.setAttribute("name", "type_action");
-        input.setAttribute("value", action);
-        input.style.backgroundColor = sortedData[action].color;
-        container.appendChild(input);
-
-        let label = document.createElement("label");
-        label.setAttribute("for", action);
-        label.style.left = "6px";
-        label.textContent = sortedData[action].name;
-        container.appendChild(label);
-
-        parent.appendChild(container);
-
-        // Ajouter un gestionnaire d'événements pour chaque bouton radio
-        input.addEventListener("change", function (elt) {
-            var selectedType = this.value;
-
-            changeColorRadioButton(elt)
-
-            // Activer le sous-groupe sélectionné et désactiver les autres
-            Object.keys(subGroups).forEach(typeAction => {
-                if (typeAction === selectedType) {
-                    map.addLayer(subGroups[typeAction]);
-                } else {
-                    map.removeLayer(subGroups[typeAction]);
-                }
-            });
-        });
-
-        // Sélectionnez tous les boutons radio par défaut
-        input.checked = true;
-    });
-}
-
-function addProspectsRadioButton(actions, subGroups, map) {
-    // S'il existe une entrée prospect, créé le fieldset radio button dans le filtre
-    if (actions.some(e => e.prospect === "oui")) {
-
-        let fieldset = document.createElement("fieldset")
-        fieldset.setAttribute("id", "statut_action")
-
-        createField("all_statut", "Toutes les actions", true)
-        createField("prospects", "Prospects")
-        createField("en_cours", "Actions en cours")
-
-        function createField(id, text, checked = false) {
-            let container = document.createElement("div")
-
-            let input = document.createElement("input")
-            input.setAttribute("type", "radio")
-            input.setAttribute("id", id)
-            input.setAttribute("name", "statut_action")
-            input.setAttribute("value", id)
-            if(checked) {
-                input.setAttribute("checked", "checked")
-            }
-            container.appendChild(input)
-
-            let label = document.createElement("label")
-            label.setAttribute("for", id)
-            label.style.left = "6px"
-            label.textContent = text
-            container.appendChild(label)
-
-            if (id == "prospects") {
-                let icon = getProspectIcon()
-                container.appendChild(container.ownerDocument.importNode(icon.documentElement, true))
-            }
-
-            fieldset.appendChild(container)
-        }
-
-        let sibbling = document.getElementById("search-bar")
-        let parent = document.getElementById("mapDG-filter-container")
-        parent.insertBefore(fieldset, sibbling)
-
-        fieldset.addEventListener("change", function () {
-            var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
-
-            // Filtrer les marqueurs en fonction de la sélection "Statut" et de la sélection du type d'action
-            Object.keys(subGroups).forEach(typeAction => {
-                //var markers = window.markersGroups[typeAction].getLayers();
-                window.markers.forEach(marker => {
-                    //checkMarker(typeAction, remove = false)
-                    switch (selectedStatut) {
-                        case "all_statut":
-                            checkMarker(typeAction, remove = false)
-                            break;
-                        case "prospects":
-
-                            if (marker.prospect == "oui") {
-                                checkMarker(typeAction, remove = false)
-                            } else {
-                                checkMarker(typeAction, remove = true)
-                            }
-                            break;
-                        case "en_cours":
-                            if (marker.prospect == "non") {
-                                checkMarker(typeAction, remove = false)
-                            } else {
-                                checkMarker(typeAction, remove = true)
-                            }
-                            break;
-                    }
-                    function checkMarker(typeAction, remove = false){
-                        if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
-                            subGroups[typeAction].addLayer(marker);
-                        }
-                        else if(remove == true && (subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction)){
-                            subGroups[typeAction].removeLayer(marker);
-                        }
-                    }  
-
-                    
-
-                });
-            });
-
-        })
-    }
 }
 
 function changeColorRadioButton(e){
@@ -352,6 +153,7 @@ function createMarker(sortedData, action) {
     window.markers.push(marker)
     return marker
 }
+
 function defineIcon(sortedData, action) {
     if (action.prospect == "oui"){
         var iconPath = `
@@ -448,13 +250,10 @@ function createPopup(action, sortedData) {
 
     // Date Cartel
     if (action.date){
-        //window.dateTypes.push(action.date)
-        //window.dateTypes.push(action.date_fin)
         let date = document.createElement("p")
         date.innerHTML = `<b>Date : </b>${action.date} ${action.date_fin ? "| " + action.date_fin : ""}`
         popupContent.appendChild(date)
     }
-    
     
     // Saison Cartel
     if (action.saison){
@@ -525,6 +324,364 @@ function createPopup(action, sortedData) {
     }
 
     return popupContent
+}
+
+function createCluster(sortedData, actions, map, selectedType = "all_type", selectedStatut = "all_statut") {
+    var parentGroup = L.markerClusterGroup({
+        showCoverageOnHover: false
+    });
+
+    var subGroups = {}; // Un objet pour stocker les sous-groupes
+
+    Object.keys(sortedData).forEach(typeAction => {
+        var arrayMarkers = [];
+
+        sortedData[typeAction].data.forEach(action => {
+
+            if (!action.latitude && !action.longitude) { return }
+
+            let marker = createMarker(sortedData[typeAction], action);
+            marker["data"] = action
+            arrayMarkers.push(marker);
+        });
+        // Créer un sous-groupe pour chaque type d'action
+        var actionGroup = L.featureGroup.subGroup(parentGroup, arrayMarkers);
+        subGroups[typeAction] = actionGroup; // Ajouter le sous-groupe à l'objet subGroups
+    });
+
+    
+    var overlayMaps = {};
+    Object.keys(subGroups).forEach(typeAction => {
+        // Ajouter les sous-groupes au contrôle de couches
+        overlayMaps[typeAction] = subGroups[typeAction]
+
+        // Activer chaque sous-groupe par défaut ou celui sélectionné
+        let layerToShow = selectedType == "all_type" ? typeAction : selectedType
+        map.addLayer(subGroups[layerToShow]) 
+        return layerToShow       
+    })
+    // Créer le contrôle de couches et l'ajouter à la carte
+    var layersControl = L.control.layers(null, overlayMaps).addTo(map)
+
+    // Ajouter les boutons radio au fieldset
+    addTypesRadioButton(sortedData, layersControl, subGroups, map, selectedType)
+
+    // Ajout conditionnel du fieldset des prospects
+    addProspectsRadioButton(actions, subGroups, map, selectedStatut)
+    
+    parentGroup.addTo(map)
+
+    return parentGroup
+}
+
+function updateResultsCounter(count){
+    $("#results b").text(count)
+}
+
+function addTypesRadioButton(sortedData, layersControl, subGroups, map, selectedType) {
+
+    // Réinitialisation du conteneur
+    $("#type_action_container").empty()
+
+    var parent = document.getElementById("type_action_container");
+
+    // Ajoutez un bouton "Toutes les actions" pour afficher tous les sous-groupes
+    var allTypesButton = document.createElement("div")
+    allTypesButton.setAttribute("class", "btn btn-default")
+
+    var allTypesInput = document.createElement("input");
+    allTypesInput.setAttribute("type", "radio");
+    allTypesInput.setAttribute("id", "all_type");
+    allTypesInput.setAttribute("name", "type_action");
+    allTypesInput.setAttribute("value", "all_type");
+    allTypesInput.checked = true;
+    
+    var allTypesLabel = document.createElement("label");
+    allTypesLabel.setAttribute("for", "all_type");
+    allTypesLabel.textContent = "Toutes les actions";
+
+    allTypesButton.appendChild(allTypesInput)
+    allTypesButton.appendChild(allTypesLabel)
+
+    parent.appendChild(allTypesButton);
+
+    // Ajouter un gestionnaire d'événements pour le bouton "Toutes les actions"
+    allTypesInput.addEventListener("change", function (elt) {
+        changeColorRadioButton(elt)
+        if (this.checked) {
+            // Activer tous les sous-groupes
+            Object.keys(subGroups).forEach(typeAction => {
+                map.addLayer(subGroups[typeAction]);
+            });
+        }
+    });
+
+    Object.keys(sortedData).forEach(action => {
+        let container = document.createElement("div");
+        container.setAttribute("data-backColor", sortedData[action].color);
+        container.setAttribute("data-color", sortedData[action].text_color);
+
+        if (action == selectedType){
+            container.setAttribute("class", "checked");
+            document.documentElement.style.setProperty('--radio-type-background', sortedData[action].color);
+            document.documentElement.style.setProperty('--radio-type-color', sortedData[action].text_color);
+        }
+        let input = document.createElement("input");
+        input.setAttribute("type", "radio");
+        input.setAttribute("id", action);
+        input.setAttribute("name", "type_action");
+        input.setAttribute("value", action);
+        input.style.backgroundColor = sortedData[action].color;
+        container.appendChild(input);
+
+        let label = document.createElement("label");
+        label.setAttribute("for", action);
+        label.style.left = "6px";
+        label.textContent = sortedData[action].name;
+        container.appendChild(label);
+
+        parent.appendChild(container);
+
+        // Ajouter un gestionnaire d'événements pour chaque bouton radio
+        input.addEventListener("change", function (elt) {
+            var selectedType = this.value;
+
+            changeColorRadioButton(elt)
+
+            // Activer le sous-groupe sélectionné et désactiver les autres
+            Object.keys(subGroups).forEach(typeAction => {
+                if (typeAction === selectedType) {
+                    map.addLayer(subGroups[typeAction]);
+                } else {
+                    map.removeLayer(subGroups[typeAction]);
+                }
+            });
+        })
+    });
+}
+function checkMarker(marker, subGroups, typeAction, remove = false){
+    if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
+        subGroups[typeAction].addLayer(marker);
+    }
+    if(remove && (subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction)){
+        subGroups[typeAction].removeLayer(marker);
+    }
+}
+function addProspectsRadioButton(actions, subGroups, map, selectedStatut) {
+
+    // Réinitialisation du conteneur
+    $("#prospect-filter").empty()
+
+    // S'il existe une entrée prospect, créé le fieldset radio button dans le filtre
+    if (!actions.some(e => e.prospect === "oui")) { return }
+
+    let fieldset = document.createElement("fieldset")
+    fieldset.setAttribute("id", "statut_action")
+
+    createField(fieldset, "all_statut", "Toutes les actions", selectedStatut)
+    createField(fieldset, "prospects", "Prospects", selectedStatut)
+    createField(fieldset, "en_cours", "Actions en cours", selectedStatut)
+
+    let parent = document.getElementById("prospect-filter")
+    parent.appendChild(fieldset)
+    setSelectedStatut(selectedStatut)
+
+    fieldset.addEventListener("change", function () {
+        var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
+        setSelectedStatut(selectedStatut)
+    })
+    
+    function setSelectedStatut(selectedStatut){
+        // Filtrer les marqueurs en fonction de la sélection "Statut" et de la sélection du type d'action
+        Object.keys(subGroups).forEach(typeAction => {
+            window.markers.forEach(marker => {
+                if(selectedStatut == "all_statut"){
+                    checkMarker(marker, subGroups, typeAction)
+                }
+                if(selectedStatut == "prospects"){
+                    var remove = marker.data.prospect == "oui" ? false : true
+                    checkMarker(marker, subGroups, typeAction, remove)
+                }
+                if(selectedStatut == "en_cours"){
+                    var remove = marker.data.prospect == "non" ? false : true
+                    checkMarker(marker, subGroups, typeAction, remove)
+                }  
+            })
+        })
+    }
+}
+
+function createField(fieldset, id, text, selectedStatut) {
+    let container = document.createElement("div")
+
+    let input = document.createElement("input")
+    input.setAttribute("type", "radio")
+    input.setAttribute("id", id)
+    input.setAttribute("name", "statut_action")
+    input.setAttribute("value", id)
+    if(selectedStatut == id) {
+        input.setAttribute("checked", "checked")
+    }
+    container.appendChild(input)
+
+    let label = document.createElement("label")
+    label.setAttribute("for", id)
+    label.style.left = "6px"
+    label.textContent = text
+    container.appendChild(label)
+
+    if (id == "prospects") {
+        let icon = getProspectIcon()
+        container.appendChild(container.ownerDocument.importNode(icon.documentElement, true))
+    }
+
+    fieldset.appendChild(container)
+}
+
+function searchBox(actions, typesAction, config, map) {
+
+    if (!RegExp.escape) {
+        RegExp.escape = function(s) {
+            return s.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, "\\$&")
+        }
+    }
+    $('.search-bar').submit(function(e) { e.preventDefault() })
+    $('#search').click(function(e) {
+
+        // Récupération des informattions des filtres
+        var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
+        var selectedType = document.querySelector('input[name="type_action"]:checked').value
+
+        console.log(selectedStatut, selectedType)
+        console.log(map)
+
+        // Réinitialisation de la carte pour intégrer le dataset filtré
+        if (map == undefined) { return }
+        map.off()
+        map.remove()
+
+        // Création de la carte
+        map = createMap()
+
+        // Filtrer le dataset
+        var filterQuery = filterSearch(actions, map)
+        filteredSortedData = createSortedDataObject(filterQuery.filtered, typesAction, config)
+        console.log(filteredSortedData)
+
+        // Création des nouveaux clusters
+        createCluster(filteredSortedData, filterQuery.filtered, map, selectedType, selectedStatut) 
+
+        // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
+        document.addEventListener('fullscreenchange', onFullScreenChange);
+
+        // Création du bouton Réinitialiser les filtres
+        //createResetButton()
+
+        // Initialisation du nombre de résultats
+        updateResultsCounter(filterQuery.filtered.length)
+
+    })
+
+function filterSearch(actions, subGroups, map) {
+
+    var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
+    // Traitement de la recherche avec prise en charge de la recherche exacte ("lorem")
+    let queryReg = []
+    var regexQuote = new RegExp(/\"(.*?)\"/, 'gm')
+
+    if (regexQuote.test(searchTerms)) {
+        queryReg = searchTerms.match(regexQuote).map(q => q.replace(/\"/gm, ''))
+
+    } else {
+        searchTerms.toLowerCase().split(' ').map(q => queryReg.push(`(?=.*${q})`))
+    }
+    console.log(queryReg)
+    //Data filter method
+    var filtered = []
+
+    const filterIt = (arr, query) => {
+        return arr.filter(obj => Object.keys(obj).some(key => {
+            return new RegExp(query, "mgi").test(obj[key])
+        }))
+    }
+    queryReg.map(query => {         
+        filtered.push(filterIt(actions, query)) 
+    })
+
+    // Prise en charge de la recherche avec mots multiples dans tous les champs de data
+    if (queryReg.length > 1) {
+        const findDuplicates = arr => arr.filter((item, index) => arr.indexOf(item) !== index)
+        filtered = findDuplicates(filtered.flat())
+    }
+    return { "filtered": filtered.flat(), "query": queryReg }
+}
+
+
+    /* 
+
+    
+    //accessibilityButton(data, cats)
+
+    $('#search').click(function(e) {
+
+        var catSelected = $("#typeSelection").data("select")
+        if (catSelected) {
+            data = window[`${catSelected}Data`]
+        }
+        var filterQuery = filterSearch(data)
+        $("#result-msg span")[0].textContent = filterQuery.filtered.length
+
+        if (filterQuery.filtered.length == 0) {
+            return
+        }
+
+        // Mise à jour des résultats de la carte en supprimant les cluster et les recréant avec le dataset filtré
+        var newMarkers = []
+        carteAbonnee.eachLayer(layer => { if (layer instanceof L.MarkerClusterGroup) { carteAbonnee.removeLayer(layer) } })
+        cats.map(cat => {
+            var filterCatItem = []
+            filterQuery.filtered.map(item => {
+                if (item.type_equipement_ou_lieu.toLowerCase() == cat.type) {
+                    filterCatItem.push(item)
+                }
+            })
+            newMarkers.push(window.map_utils.createCluster(cat, filterCatItem, regions))
+        })
+
+        // Création de la liste des marqueurs filtrés 
+
+        newMarkers = flatArray(newMarkers.flat().map(cluster => { return cluster.markers }))
+
+        $("#access-button").remove()
+        accessibilityButton(filterQuery.filtered)
+        createButtonReseaux(filterQuery.filtered)
+
+        // Construction du DOM des résultats
+        document.getElementById('searchResults').replaceChildren()
+        if (filterQuery.query != `(?=.*)`) {
+            carteAbonnee.setView([46.71109, 1.7191036], 6)
+            $.each(filterQuery.filtered, function(key, val) {
+                var popup = createPopup(val, "isSearch", newMarkers, map)
+                document.getElementById('searchResults').appendChild(popup)
+            })
+
+            if ($("#resultsLink").length == 0) {
+                // If button does not exists, create it
+                let resultsLink = document.createElement("a")
+                resultsLink.setAttribute("href", "#filter-results")
+                resultsLink.setAttribute("id", "resultsLink")
+                resultsLink.setAttribute("class", "btn btn-default")
+                resultsLink.textContent = "Voir la liste"
+
+                $(".search-bar")[0].insertBefore(resultsLink, document.getElementById("result-msg"))
+
+                $("#noResult-msg").remove()
+
+            }
+        }
+
+    }) */
+
 }
 
 function responsiveFilter(){
