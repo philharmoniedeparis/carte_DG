@@ -4,8 +4,8 @@ $(document).ready(function(){
 
 function getData(callback){
 
-    //fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
-    fetch('./python/data.json')
+    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
+    //fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
         throw new Error('Network response : ' + response.statusText);
@@ -130,15 +130,18 @@ function createMap(){
         minZoom :  2,
         maxZoom: 12,
     }).setView(initial_view.latlng, initial_view.zoom); 
-    
+
+    // Tile PAD
     L.tileLayer('https://tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=YCEYIYWB5ZcUuCYc2XQe9fGjttHukDxdSd2wqzlA7mhBwMK8SXM9h3RGqxtZzuna', {}).addTo(map);
     map.attributionControl.addAttribution("<a href=\"https://www.jawg.io\" target=\"_blank\">&copy; Jawg</a> - <a href=\"https://www.openstreetmap.org\" target=\"_blank\">&copy; OpenStreetMap</a>&nbsp;contributors")
-    
-    /* L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map) */
-
     return map
+   
+
+    // Tile 1
+    /* L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map)
+    return map  */ 
 }
 
 function changeColorRadioButton(e){
