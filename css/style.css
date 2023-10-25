@@ -389,9 +389,9 @@ body{
 }
 
 /* ////////// CONTROLS ////////// */
-/* .leaflet-control-layers .leaflet-control-layers-toggle{
+.leaflet-control-layers .leaflet-control-layers-toggle{
     display: none;
-} */
+}
 /* ////////// RESPONSIVE ////////// */
 @media screen and (min-width : 1024px) {
     #cl-module #mapDG-filter-container:not(.fullscreen-filters){
