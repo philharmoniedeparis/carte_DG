@@ -49,7 +49,7 @@
 
     /* Dynamic color changing depending on data */
     --radio-type-background: var(--light-blue);
-    --radio-type-color: var(--light-blue);
+    --radio-type-color: var(--deep-blue);
 }
 
 body{
@@ -252,17 +252,29 @@ body{
 }
 #cl-module #type_action_container input {
     appearance: none;
-    margin: 0 5px 0 0;
-    width: 15px;
-    height: 15px;
-    border: none;
-    border-radius: 50%;
+    position: absolute;
 }
-#cl-module #type_action_container .checked {
-    background-color: var(--radio-type-background);
-    color: var(--radio-type-color);
-    transition: background-color 0.2s ease-in-out;
+#cl-module #type_action_container div[id^="iconType-"]{
+    position: relative;
+    height: 15px;
+    width: 15px;
+    margin-right: 5px;
+}
+#cl-module #type_action_container div[id^="iconType-"] svg{
+    position: absolute;
+    height: 15px;
+    width: 15px;
+    cursor: pointer;
+}
 
+#cl-module #type_action_container div[id^="iconType-"] svg.checkIcon{
+    stroke-width: 7px;
+    stroke-linecap: round;
+    width: 8px;
+    height: 8px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 /* ////////// Reset Button ////////// */
@@ -377,9 +389,9 @@ body{
 }
 
 /* ////////// CONTROLS ////////// */
-.leaflet-control-layers .leaflet-control-layers-toggle{
+/* .leaflet-control-layers .leaflet-control-layers-toggle{
     display: none;
-}
+} */
 /* ////////// RESPONSIVE ////////// */
 @media screen and (min-width : 1024px) {
     #cl-module #mapDG-filter-container:not(.fullscreen-filters){

@@ -4,8 +4,8 @@ $(document).ready(function(){
 
 function getData(callback){
 
-    //fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
-    fetch('./python/data.json')
+    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
+    //fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
         throw new Error('Network response : ' + response.statusText);
@@ -132,18 +132,27 @@ function createMap(){
     }).setView(initial_view.latlng, initial_view.zoom); 
 
     // Tile PAD
-    L.tileLayer('https://tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=YCEYIYWB5ZcUuCYc2XQe9fGjttHukDxdSd2wqzlA7mhBwMK8SXM9h3RGqxtZzuna', {}).addTo(map);
+    /* L.tileLayer('https://tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=YCEYIYWB5ZcUuCYc2XQe9fGjttHukDxdSd2wqzlA7mhBwMK8SXM9h3RGqxtZzuna', {}).addTo(map);
     map.attributionControl.addAttribution("<a href=\"https://www.jawg.io\" target=\"_blank\">&copy; Jawg</a> - <a href=\"https://www.openstreetmap.org\" target=\"_blank\">&copy; OpenStreetMap</a>&nbsp;contributors")
-    return map
+    return map */
    
 
     // Tile 1
-    /* L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+    L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map)
-    return map  */ 
+    return map  
 }
 
+function changeColorRadioButton(e){
+    // Gestion de la couleur de fond
+    $("#type_action_container div").removeClass("checked")
+    var typeSelected = $(e.target).is("div") ? $(e.target) : $(e.target).parent("div")
+
+    typeSelected.addClass("checked")
+    document.documentElement.style.setProperty('--radio-type-background', typeSelected.attr("data-backColor"));
+    document.documentElement.style.setProperty('--radio-type-color', typeSelected.attr("data-color"));
+}
 
 function createMarker(sortedData, action) {
     let latitude = parseFloat(action.latitude.replace(",", "."))
@@ -338,8 +347,7 @@ function createPopup(action, sortedData) {
     return popupContent
 }
 
-function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], selectedStatut = "all_statut") {
-
+function createCluster(sortedData, actions, map, selectedType = "all_type", selectedStatut = "all_statut") {
     var parentGroup = L.markerClusterGroup({
         showCoverageOnHover: false
     });
@@ -363,29 +371,27 @@ function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], s
     });
 
     
-    var overlayMaps = {};    
+    var overlayMaps = {};
     Object.keys(subGroups).forEach(typeAction => {
         // Ajouter les sous-groupes au contrôle de couches
         overlayMaps[typeAction] = subGroups[typeAction]
-        if (selectedTypes.length == 1 && selectedTypes[0] == "all_type"){
-            map.addLayer(subGroups[typeAction]) 
-        }
-        else if(selectedTypes.includes(typeAction)){
-            map.addLayer(subGroups[typeAction])
-        }    
+
+        // Activer chaque sous-groupe par défaut ou celui sélectionné
+        let layerToShow = selectedType == "all_type" ? typeAction : selectedType
+        map.addLayer(subGroups[layerToShow]) 
+        return layerToShow       
     })
     // Créer le contrôle de couches et l'ajouter à la carte
     var layersControl = L.control.layers(null, overlayMaps).addTo(map)
 
     // Ajouter les boutons radio au fieldset
-    //addTypesRadioButton(sortedData, layersControl, subGroups, map, selectedType)
-    addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTypes)
-    
+    addTypesRadioButton(sortedData, layersControl, subGroups, map, selectedType)
+
     // Ajout conditionnel du fieldset des prospects
     addProspectsRadioButton(actions, subGroups, map, selectedStatut)
 
     // Initialise results counter
-    updateResultsCounter(subGroups, selectedStatut)
+    updateResultsCounter(subGroups, selectedType, selectedStatut)
    
     
     parentGroup.addTo(map)
@@ -393,45 +399,39 @@ function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], s
     return parentGroup
 }
 
-function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
+function updateResultsCounter(subGroups, selectedType, selectedStatut){
 
-    // Récupère la liste des actions sélectionnées
-    if (!selectedTypes){
-        var selectedInputs = document.querySelectorAll('input[name="type_action"]:checked') || undefined 
-        var selectedTypes = Array.from(selectedInputs)
-            .map(input => { return input.value})
-            .filter(type => { return type != "all_type"})
-    }
+    if(!selectedType){ 
+        selectedType = document.querySelector('input[name="type_action"]:checked').value || undefined }
+
     if(!selectedStatut){ 
-        selectedStatut = document.querySelector('input[name="statut_action"]:checked').value || undefined 
-    }
+        selectedStatut = document.querySelector('input[name="statut_action"]:checked').value || undefined }
 
-    var count = 0
+    var count = (function () {
+        // Compte pour tous les types
+        if (!selectedType || selectedType == "all_type"){
+            var count = 0
+            Object.keys(subGroups).map(typeAction => {
+                count += subGroups[typeAction].getLayers().length
+            })
+            return count
+        }
 
-    // Si un type est sélectionné et le statut prospect, compte tous les prospects
-    if (selectedStatut && selectedStatut  == "prospect"){
-        selectedTypes.map(type => {
-            count += subGroups[type].getLayers().filter(marker => { return marker.data.prospect == "oui" }).length
-        })
-    }
+        // Si un type est sélectionné et le statut prospect, compte tous les prospects
+        if (selectedStatut && selectedStatut  == "prospect"){
+            return subGroups[selectedType].getLayers().filter(marker => { return marker.data.prospect == "oui" }).length }
 
-    // Si un type est sélectionné et le statut en_cours, compte tous les en_cours
-    else if (selectedStatut && selectedStatut  == "en_cours"){
-        selectedTypes.map(type => {
-            count += subGroups[type].getLayers().filter(marker => { return marker.data.prospect == "non" }).length
-        })
-    }
+        // Si un type est sélectionné et le statut en_cours, compte tous les en_cours
+        if (selectedStatut && selectedStatut  == "en_cours"){
+            return subGroups[selectedType].getLayers().filter(marker => { return marker.data.prospect == "non" }).length }
 
-    // Compte toutes les actions
-    else {
-        selectedTypes.map(type => {
-            count += subGroups[type].getLayers().length
-        })
-    }
+        // Compte toutes les actions
+        return subGroups[selectedType].getLayers().length
+    })()
     $("#results b").text(count)
 }
 
-function addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTypes) {
+function addTypesRadioButton(sortedData, layersControl, subGroups, map, selectedType) {
 
     // Réinitialisation du conteneur
     $("#type_action_container").empty()
@@ -440,83 +440,54 @@ function addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTyp
 
     // Ajoutez un bouton "Toutes les actions" pour afficher tous les sous-groupes
     var allTypesButton = document.createElement("div")
+    allTypesButton.setAttribute("class", "btn btn-default")
 
     var allTypesInput = document.createElement("input");
-    allTypesInput.setAttribute("type", "checkbox");
+    allTypesInput.setAttribute("type", "radio");
     allTypesInput.setAttribute("id", "all_type");
     allTypesInput.setAttribute("name", "type_action");
     allTypesInput.setAttribute("value", "all_type");
-    allTypesInput.setAttribute("data-backColor", "var(--light-blue)");
-    allTypesInput.setAttribute("data-color", "var(--deep-blue)");
-
-
-
-    allTypesButton.appendChild(allTypesInput)
-
-    let iconInput = createIconInput("all_type", allTypesInput)
-    allTypesButton.appendChild(iconInput);
-
-    allTypesInput.checked = selectedTypes.includes("all_type") ? true : false
-    typeCheckedStyle(allTypesInput)
+    allTypesInput.checked = true;
     
     var allTypesLabel = document.createElement("label");
     allTypesLabel.setAttribute("for", "all_type");
     allTypesLabel.textContent = "Toutes les actions";
 
+    allTypesButton.appendChild(allTypesInput)
     allTypesButton.appendChild(allTypesLabel)
+
     parent.appendChild(allTypesButton);
 
-    var checkboxes = [];
     // Ajouter un gestionnaire d'événements pour le bouton "Toutes les actions"
-    allTypesInput.addEventListener("change", function () {
+    allTypesInput.addEventListener("change", function (elt) {
+        changeColorRadioButton(elt)
         if (this.checked) {
-
             // Activer tous les sous-groupes
-            Object.keys(subGroups).forEach(typeAction => { map.addLayer(subGroups[typeAction]) })
-
-            // Activer toutes les autres cases à cocher
-            checkboxes.forEach(checkbox => { 
-                checkbox.checked = true 
-                typeCheckedStyle(checkbox)
-            });
-        }
-        else{
-
-            // Désactiver tous les sous-groupes
-            Object.keys(subGroups).forEach(typeAction => { map.removeLayer(subGroups[typeAction]) })
-
-            // Désactiver toutes les autres cases à cocher
-            checkboxes.forEach(checkbox => { 
-                checkbox.checked = false
-                typeCheckedStyle(checkbox)
+            Object.keys(subGroups).forEach(typeAction => {
+                map.addLayer(subGroups[typeAction]);
             })
+            // Update results counter
+            updateResultsCounter(subGroups)
         }
-        typeCheckedStyle(allTypesInput)
-        updateResultsCounter(subGroups);
     });
 
     Object.keys(sortedData).forEach(action => {
         let container = document.createElement("div");
+        container.setAttribute("data-backColor", sortedData[action].color);
+        container.setAttribute("data-color", sortedData[action].text_color);
 
+        if (action == selectedType){
+            container.setAttribute("class", "checked");
+            document.documentElement.style.setProperty('--radio-type-background', sortedData[action].color);
+            document.documentElement.style.setProperty('--radio-type-color', sortedData[action].text_color);
+        }
         let input = document.createElement("input");
-        input.setAttribute("type", "checkbox");
-        input.setAttribute("data-backColor", sortedData[action].color);
-        input.setAttribute("data-color", sortedData[action].text_color);
-        input.setAttribute("id", sortedData[action].id_API);
+        input.setAttribute("type", "radio");
+        input.setAttribute("id", action);
         input.setAttribute("name", "type_action");
         input.setAttribute("value", action);
-
-  
-
-        checkboxes.push(input)
-
+        input.style.backgroundColor = sortedData[action].color;
         container.appendChild(input);
-
-        let iconInput = createIconInput(action, input)
-        container.appendChild(iconInput);
-
-        input.checked = (selectedTypes.includes(action) || selectedTypes.includes("all_type")) ? true : false
-        typeCheckedStyle(input) 
 
         let label = document.createElement("label");
         label.setAttribute("for", action);
@@ -526,62 +497,26 @@ function addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTyp
 
         parent.appendChild(container);
 
-        // Ajouter un gestionnaire d'événements pour chaque case à cocher
-        input.addEventListener("change", function () {
-            if (this.checked) {
-                map.addLayer(subGroups[action]);
-            } else {
-                map.removeLayer(subGroups[action]);
-                allTypesInput.checked = false
-            }
-            typeCheckedStyle(input)
-            typeCheckedStyle(allTypesInput)
+        // Ajouter un gestionnaire d'événements pour chaque bouton radio
+        input.addEventListener("change", function (elt) {
+            var selectedType = this.value;
 
-            updateResultsCounter(subGroups);
-        });
+            changeColorRadioButton(elt)
+            // Activer le sous-groupe sélectionné et désactiver les autres
+            Object.keys(subGroups).forEach(typeAction => {
+                if (typeAction === selectedType) {
+                    map.addLayer(subGroups[typeAction])
+
+                    // Update results counter
+                    updateResultsCounter(subGroups) 
+
+                } else {
+                    map.removeLayer(subGroups[typeAction]);
+                }
+            })               
+        })
     });
 }
-function createIconInput(action, input){
-    let backColor = input.getAttribute("data-backColor")
-    let color = input.getAttribute("data-color")
-
-    let container = document.createElement("div")
-    container.setAttribute("id", `iconType-${action}`)
-
-    let cursor = new DOMParser().parseFromString(`
-        <svg class="cursor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 73.53 73.53">
-            <rect width="73.53" height="73.53" rx="17.9" ry="17.9"/>
-        </svg>`, "text/xml").documentElement
-    cursor.setAttribute("style", `fill: ${backColor}; stroke: var(--deep-blue); stroke-width:0px;`)
-    container.appendChild(cursor)
-
-
-    let checkIcon = new DOMParser().parseFromString(`
-        <svg class="checkIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 41.3 29.06">
-            <line x1="3.5" y1="13.33" x2="15.74" y2="25.56"/>
-            <line x1="37.8" y1="3.5" x2="15.74" y2="25.56"/>
-        </svg>`, "text/xml").documentElement
-    checkIcon.setAttribute("style", `stroke: #fff;`)
-    container.appendChild(checkIcon)
-
-    return container
-}
-
-function typeCheckedStyle(elt){
-
-    if (!elt.nextElementSibling) {return}
-
-    if (elt && !elt.checked) { 
-        elt.nextElementSibling.children[0].setAttribute("style", "fill: #F2F2F2; stroke: #666; stroke-width:1px")
-        elt.nextElementSibling.children[1].setAttribute("display", "none")
-    }
-    else{
-        elt.nextElementSibling.children[0].setAttribute("style", `fill: ${elt.getAttribute("data-backColor")}; stroke: #ccc; stroke-width:0px; `)
-        elt.nextElementSibling.children[1].setAttribute("display", "block")
-    }
-
-}
-
 function checkMarker(marker, subGroups, typeAction, remove = false){
     if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
         subGroups[typeAction].addLayer(marker);
@@ -677,11 +612,7 @@ function searchBox(actions, typesAction, config, map) {
 
         // Récupération des informattions des filtres
         var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
-
-        var selectedInputs = document.querySelectorAll('input[name="type_action"]:checked') || undefined 
-        var selectedTypes = Array.from(selectedInputs)
-            .map(input => { return input.value})
-            .filter(type => { return type != "all_type"})
+        var selectedType = document.querySelector('input[name="type_action"]:checked').value
 
         // Réinitialisation de la carte pour intégrer le dataset filtré
         if (map == undefined) { return }
@@ -696,7 +627,7 @@ function searchBox(actions, typesAction, config, map) {
         filteredSortedData = createSortedDataObject(filterQuery.filtered, typesAction, config)
 
         // Création des nouveaux clusters
-        createCluster(filteredSortedData, filterQuery.filtered, map, selectedTypes, selectedStatut) 
+        createCluster(filteredSortedData, filterQuery.filtered, map, selectedType, selectedStatut) 
 
         // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
         document.addEventListener('fullscreenchange', onFullScreenChange);
