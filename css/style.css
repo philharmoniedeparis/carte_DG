@@ -184,7 +184,14 @@ body{
     position: relative;
     bottom: 2px;
 }
-
+#cl-module fieldset > div input:disabled + div,
+#cl-module fieldset > div input:disabled + div svg,
+#cl-module fieldset > div input:disabled + div + label {
+    cursor: initial !important;
+    color: #ccc !important;
+    fill: #ccc !important;
+    stroke: #ccc !important;
+}
 #cl-module #statut_action svg{
     width: 15px;
     height: 15px;
@@ -279,10 +286,14 @@ body{
 
 /* ////////// Reset Button ////////// */
 #cl-module #reset-button{
-    z-index: 999;
-    position: absolute;
-    bottom: 25px;
-    right: 10px;
+    width: 34px;
+    height: 34px;
+    padding: 7px;
+    margin-top: 5px;
+    background-color: #fff;
+}
+#cl-module #reset-button:hover{
+    background-color: var(--light-grey);
 }
 
 /* ////////// Loader ////////// */
@@ -407,4 +418,9 @@ body{
     #cl-module #mapDG-filter-container.fullscreen-filters{
         position: absolute;
     } 
+}
+@media screen and (max-height:964px) {
+    #cl-module #mapDG-filter-container{
+        overflow-y: scroll;
+    }
 }

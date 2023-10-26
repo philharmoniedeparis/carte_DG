@@ -17,9 +17,10 @@
                     <aside id="mapDG-filter-container">
                         <div class="filter-header">
                             <h3>Rechercher</h3>
-                            <p id="results"><b>125</b> Action(s)</p>
+                            <p id="results"><b></b> Action(s)</p>
                         </div>
-                        
+                        <div id="prospect-filter"></div>
+
 
                         <form class="search-bar" action="" id="search-bar">
                             <div id="search-field">
@@ -65,6 +66,9 @@
 
                 <!-- Subgroup -->
                 <script src="js/subgroup/src/subgroup.js"></script>
+                <!-- Après les scripts Leaflet et Leaflet.markercluster -->
+                <!-- <script src="js/subgroup/src/leaflet.markercluster.layersupport.js"></script> -->
+
 
                 <!-- jQuery -->
                 <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>

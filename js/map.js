@@ -4,8 +4,8 @@ $(document).ready(function(){
 
 function getData(callback){
 
-    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
-    //fetch('./python/data.json')
+    //fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
+    fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
         throw new Error('Network response : ' + response.statusText);
@@ -82,7 +82,6 @@ function generalMapFunction(data){
 
     // Création de la carte
     var map = createMap()
-    
 
     // Création des clusters
     createCluster(sortedData, actions, map)
@@ -91,10 +90,10 @@ function generalMapFunction(data){
     document.addEventListener('fullscreenchange', onFullScreenChange);
 
     // Création du bouton Réinitialiser les filtres
-    createResetButton()
+    createResetButton(map)
 
     // Recherche plein texte
-    searchBox(actions, typesAction, config, map)
+    searchBox(actions, typesAction, config, map, sortedData)
 
 }
 
@@ -190,39 +189,36 @@ function createPopup(action, sortedData) {
     let popupContent = document.createElement('div')
     popupContent.setAttribute("class", 'values')
 
-    // Prospect
-    if(action.prospect == "oui"){
-        let container = document.createElement("div")
-        container.setAttribute("class", "prospect")
-
-        let icon = getProspectIcon(sortedData)
-        container.appendChild(container.ownerDocument.importNode(icon.documentElement, true))
-
-        let prospect = document.createElement("p")
-        prospect.textContent = "Prospect"
-        container.appendChild(prospect)
-
-        popupContent.appendChild(container)
-
-        // Séparateur
-        let separator = document.createElement("div")
-        separator.setAttribute("class", "separator")
-        popupContent.appendChild(separator)
-    }
+    // Header
+    let container = document.createElement("div")
+    container.setAttribute("class", "prospect")
 
     // Type d'action
-    let typeAction = document.createElement("h4")
+    let typeAction = document.createElement("p")
     typeAction.setAttribute("class", "type-action")
     typeAction.textContent = sortedData.name
-    popupContent.appendChild(typeAction)
 
     // Séparateur
-    if(action.prospect == "non"){
-        let separator = document.createElement("div")
-        separator.setAttribute("class", "separator")
-        separator.setAttribute("style", `background-color: ${sortedData.color}`)
-        popupContent.appendChild(separator)
+    let separator = document.createElement("div")
+    separator.setAttribute("class", "separator")
+    popupContent.appendChild(separator)
+
+    if(action.prospect == "oui"){
+        var icon = getProspectIcon(sortedData)
+        typeAction.textContent += " - Prospect"
     }
+    else{
+        var icon = new DOMParser().parseFromString(
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44.74 44.74" style="background-color:${sortedData.color}"></svg>`,
+            'application/xml');
+    }
+    
+    container.appendChild(container.ownerDocument.importNode(icon.documentElement, true))
+    container.appendChild(typeAction)
+    popupContent.appendChild(container)
+
+    popupContent.appendChild(separator)
+
     
     // Titre Cartel
     let title = document.createElement("h3")
@@ -312,7 +308,6 @@ function createPopup(action, sortedData) {
     ])].filter( Boolean ).join(" ")
 
     let stateString = [...new Set([
-        action.region, 
         action.departement, 
         action.etat, 
         action.pays
@@ -320,7 +315,7 @@ function createPopup(action, sortedData) {
 
     let adresseElt = document.createElement("address")
     adresseElt.setAttribute("class", "address-action")
-    adresseElt.innerHTML = "<b>Adresse : </b>" + adresseString + (adresseString ? ", " : "") + stateString
+    adresseElt.innerHTML = "<b>Adresse : </b>" + adresseString + (adresseString ? "<br/>" : "") + stateString
     popupContent.appendChild(adresseElt)
 
     // Lien Cartel
@@ -375,11 +370,10 @@ function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], s
         }    
     })
     // Créer le contrôle de couches et l'ajouter à la carte
-    var layersControl = L.control.layers(null, overlayMaps).addTo(map)
+    L.control.layers(null, overlayMaps).addTo(map)
 
     // Ajouter les boutons radio au fieldset
-    //addTypesRadioButton(sortedData, layersControl, subGroups, map, selectedType)
-    addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTypes)
+    addTypesCheckBox(sortedData, subGroups, map, selectedTypes)
     
     // Ajout conditionnel du fieldset des prospects
     addProspectsRadioButton(actions, subGroups, map, selectedStatut)
@@ -389,8 +383,7 @@ function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], s
    
     
     parentGroup.addTo(map)
-
-    return parentGroup
+    window["parentGroup"] = parentGroup
 }
 
 function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
@@ -400,7 +393,7 @@ function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
         var selectedInputs = document.querySelectorAll('input[name="type_action"]:checked') || undefined 
         var selectedTypes = Array.from(selectedInputs)
             .map(input => { return input.value})
-            .filter(type => { return type != "all_type"})
+            .filter(typeAction => { return typeAction != "all_type"})
     }
     if(!selectedStatut){ 
         selectedStatut = document.querySelector('input[name="statut_action"]:checked').value || undefined 
@@ -409,29 +402,73 @@ function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
     var count = 0
 
     // Si un type est sélectionné et le statut prospect, compte tous les prospects
-    if (selectedStatut && selectedStatut  == "prospect"){
-        selectedTypes.map(type => {
-            count += subGroups[type].getLayers().filter(marker => { return marker.data.prospect == "oui" }).length
+    if (selectedStatut && selectedStatut  == "prospects"){
+        
+        selectedTypes.map(typeAction => {
+            count += subGroups[typeAction].getLayers().filter(marker => { return marker.data.prospect == "oui" }).length
         })
+        var countProspects = count
     }
 
     // Si un type est sélectionné et le statut en_cours, compte tous les en_cours
     else if (selectedStatut && selectedStatut  == "en_cours"){
-        selectedTypes.map(type => {
-            count += subGroups[type].getLayers().filter(marker => { return marker.data.prospect == "non" }).length
+        selectedTypes.map(typeAction => {
+            count += subGroups[typeAction].getLayers().filter(marker => { return marker.data.prospect == "non" }).length
         })
+        var countEnCours = count
     }
 
     // Compte toutes les actions
     else {
-        selectedTypes.map(type => {
-            count += subGroups[type].getLayers().length
+        selectedTypes.map(typeAction => {
+            count += subGroups[typeAction].getLayers().length
         })
     }
     $("#results b").text(count)
+    disableNoResult(subGroups)
 }
 
-function addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTypes) {
+function disableNoResult(subGroups){
+    
+    Object.keys(subGroups).forEach(typeAction => {
+        var inputType = document.querySelector(`input[name="type_action"][value="${typeAction}"]`)
+
+        /* // Désactivation des statuts, discuter du comportement et de l'UI
+        var statutInputs = document.querySelectorAll(`input[name="statut_action"]`)
+        var statutList = Array.from(statutInputs).map(input => { return input.value})
+
+        // Désactive les statuts sans marqueurs
+        statutList.map(value => {
+            let countProspects = subGroups[typeAction].getLayers().filter(marker => { return marker.data.prospect == "oui" }).length
+            let countEnCours = subGroups[typeAction].getLayers().filter(marker => { return marker.data.prospect == "non" }).length
+
+            if ((value == "all_statut" || value == "prospects") && countProspects == 0) {
+                document.querySelector(`input[name="statut_action"][value="prospects"]`).setAttribute("disabled", "")
+            }
+            else{
+                document.querySelector(`input[name="statut_action"][value="prospects"]`).removeAttribute("disabled")
+            }
+            if ((value == "all_statut" || value == "en_cours") &&  countEnCours == 0){
+                document.querySelector(`input[name="statut_action"][value="en_cours"]`).setAttribute("disabled", "")
+            }
+            else{
+                document.querySelector(`input[name="statut_action"][value="en_cours"]`).removeAttribute("disabled")
+            }
+            
+        }) */
+        
+
+        // Désactive les types sans marqueurs
+        if(subGroups[typeAction].getLayers().length == 0){
+            inputType.setAttribute("disabled", "")
+        }
+        else{
+            inputType.removeAttribute("disabled")
+        }
+    })        
+}
+
+function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
 
     // Réinitialisation du conteneur
     $("#type_action_container").empty()
@@ -506,8 +543,6 @@ function addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTyp
         input.setAttribute("name", "type_action");
         input.setAttribute("value", action);
 
-  
-
         checkboxes.push(input)
 
         container.appendChild(input);
@@ -541,9 +576,9 @@ function addTypesCheckBox(sortedData, layersControl, subGroups, map, selectedTyp
         });
     });
 }
+
 function createIconInput(action, input){
     let backColor = input.getAttribute("data-backColor")
-    let color = input.getAttribute("data-color")
 
     let container = document.createElement("div")
     container.setAttribute("id", `iconType-${action}`)
@@ -567,17 +602,17 @@ function createIconInput(action, input){
     return container
 }
 
-function typeCheckedStyle(elt){
+function typeCheckedStyle(input){
 
-    if (!elt.nextElementSibling) {return}
+    if (!input.nextElementSibling) {return}
 
-    if (elt && !elt.checked) { 
-        elt.nextElementSibling.children[0].setAttribute("style", "fill: #F2F2F2; stroke: #666; stroke-width:1px")
-        elt.nextElementSibling.children[1].setAttribute("display", "none")
+    if (input && !input.checked) { 
+        input.nextElementSibling.children[0].setAttribute("style", "fill: #F2F2F2; stroke: #666; stroke-width:1px")
+        input.nextElementSibling.children[1].setAttribute("display", "none")
     }
     else{
-        elt.nextElementSibling.children[0].setAttribute("style", `fill: ${elt.getAttribute("data-backColor")}; stroke: #ccc; stroke-width:0px; `)
-        elt.nextElementSibling.children[1].setAttribute("display", "block")
+        input.nextElementSibling.children[0].setAttribute("style", `fill: ${input.getAttribute("data-backColor")}; stroke: #ccc; stroke-width:0px; `)
+        input.nextElementSibling.children[1].setAttribute("display", "block")
     }
 
 }
@@ -590,12 +625,13 @@ function checkMarker(marker, subGroups, typeAction, remove = false){
         subGroups[typeAction].removeLayer(marker);
     }
 }
+
 function addProspectsRadioButton(actions, subGroups, map, selectedStatut) {
 
     // Réinitialisation du conteneur
     $("#prospect-filter").empty()
 
-    // S'il existe une entrée prospect, créé le fieldset radio button dans le filtre
+    // S'il existe une entrée prospect dans le dataset initial, créé le fieldset radio button dans le filtre
     if (!window.actions.some(e => e.prospect === "oui")) { return }
 
     let fieldset = document.createElement("fieldset")
@@ -665,7 +701,7 @@ function createField(fieldset, id, text, selectedStatut) {
     fieldset.appendChild(container)
 }
 
-function searchBox(actions, typesAction, config, map) {
+function searchBox(actions, typesAction, config, map, sortedData) {
 
     if (!RegExp.escape) {
         RegExp.escape = function(s) {
@@ -683,17 +719,28 @@ function searchBox(actions, typesAction, config, map) {
             .map(input => { return input.value})
             .filter(type => { return type != "all_type"})
 
-        // Réinitialisation de la carte pour intégrer le dataset filtré
+        // Détruire et reconstruire la carte (la méthode removeLayer ou clearLayers ne fonctionne pas, 
+        // le parentgroup doit être stocké dans une autre variable inconnue..)
         if (map == undefined) { return }
         map.off()
         map.remove()
-
-        // Création de la carte
+        map = undefined
+        
         map = createMap()
 
         // Filtrer le dataset
         var filterQuery = filterSearch(actions)
-        filteredSortedData = createSortedDataObject(filterQuery.filtered, typesAction, config)
+
+        // Comportement pour réinitialiser la carte
+        if (filterQuery == "reset"){
+            filteredSortedData = sortedData
+            selectedTypes = ["all_type"]
+            selectedStatut = "all_statut" 
+            document.getElementById("seeker").value = ""
+        }
+        else {
+            filteredSortedData = createSortedDataObject(filterQuery.filtered, typesAction, config)
+        }
 
         // Création des nouveaux clusters
         createCluster(filteredSortedData, filterQuery.filtered, map, selectedTypes, selectedStatut) 
@@ -702,13 +749,18 @@ function searchBox(actions, typesAction, config, map) {
         document.addEventListener('fullscreenchange', onFullScreenChange);
 
         // Création du bouton Réinitialiser les filtres
-        //createResetButton()
+        createResetButton(map)
 
     })
+}
 
 function filterSearch(actions) {
 
     var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
+
+    // Comportement pour réinitialiser la carte
+    if(searchTerms == "resetMap") { return "reset"}
+
     // Traitement de la recherche avec prise en charge de la recherche exacte ("lorem")
     let queryReg = []
     var regexQuote = new RegExp(/\"(.*?)\"/, 'gm')
@@ -722,11 +774,6 @@ function filterSearch(actions) {
     //Data filter method
     var filtered = []
 
-    const filterIt = (arr, query) => {
-        return arr.filter(obj => Object.keys(obj).some(key => {
-            return new RegExp(query, "mgi").test(obj[key])
-        }))
-    }
     queryReg.map(query => {         
         filtered.push(filterIt(actions, query)) 
     })
@@ -739,73 +786,42 @@ function filterSearch(actions) {
     return { "filtered": filtered.flat(), "query": queryReg }
 }
 
-
-    /* 
-
-    
-    //accessibilityButton(data, cats)
-
-    $('#search').click(function(e) {
-
-        var catSelected = $("#typeSelection").data("select")
-        if (catSelected) {
-            data = window[`${catSelected}Data`]
-        }
-        var filterQuery = filterSearch(data)
-        $("#result-msg span")[0].textContent = filterQuery.filtered.length
-
-        if (filterQuery.filtered.length == 0) {
-            return
-        }
-
-        // Mise à jour des résultats de la carte en supprimant les cluster et les recréant avec le dataset filtré
-        var newMarkers = []
-        carteAbonnee.eachLayer(layer => { if (layer instanceof L.MarkerClusterGroup) { carteAbonnee.removeLayer(layer) } })
-        cats.map(cat => {
-            var filterCatItem = []
-            filterQuery.filtered.map(item => {
-                if (item.type_equipement_ou_lieu.toLowerCase() == cat.type) {
-                    filterCatItem.push(item)
-                }
-            })
-            newMarkers.push(window.map_utils.createCluster(cat, filterCatItem, regions))
-        })
-
-        // Création de la liste des marqueurs filtrés 
-
-        newMarkers = flatArray(newMarkers.flat().map(cluster => { return cluster.markers }))
-
-        $("#access-button").remove()
-        accessibilityButton(filterQuery.filtered)
-        createButtonReseaux(filterQuery.filtered)
-
-        // Construction du DOM des résultats
-        document.getElementById('searchResults').replaceChildren()
-        if (filterQuery.query != `(?=.*)`) {
-            carteAbonnee.setView([46.71109, 1.7191036], 6)
-            $.each(filterQuery.filtered, function(key, val) {
-                var popup = createPopup(val, "isSearch", newMarkers, map)
-                document.getElementById('searchResults').appendChild(popup)
-            })
-
-            if ($("#resultsLink").length == 0) {
-                // If button does not exists, create it
-                let resultsLink = document.createElement("a")
-                resultsLink.setAttribute("href", "#filter-results")
-                resultsLink.setAttribute("id", "resultsLink")
-                resultsLink.setAttribute("class", "btn btn-default")
-                resultsLink.textContent = "Voir la liste"
-
-                $(".search-bar")[0].insertBefore(resultsLink, document.getElementById("result-msg"))
-
-                $("#noResult-msg").remove()
-
-            }
-        }
-
-    }) */
-
+const filterIt = (arr, query) => {
+    return arr.filter(obj => Object.keys(obj).some(key => {
+        return new RegExp(query, "mgi").test(obj[key])
+    }))
 }
+
+function createResetButton(map) {
+
+    // Création d'un bouton réinitialisant la carte
+    var resetButton = document.createElement("button")
+    resetButton.id= "reset-button"
+    resetButton.setAttribute("class", "leaflet-bar leaflet-control")
+    resetButton.setAttribute("type", "button")
+    resetButton.setAttribute("title", "Réinitialiser la carte")
+
+    let img = new DOMParser().parseFromString(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 328.32 335.24">
+            <path d="m272.68,41.69c.7-1.2,1.18-2.62,2.13-3.58,8.06-8.17,16.25-16.22,24.3-24.4,5.24-5.33,11.3-7.22,18.38-4.58,6.45,2.41,9.87,8.12,9.88,16.08.03,28.45.04,56.89,0,85.34-.02,10.53-6.48,17.03-17.06,17.05-28.33.07-56.65.05-84.98,0-8.13-.01-13.87-3.55-16.35-10.11-2.69-7.13-.63-13.12,4.68-18.33,8.01-7.85,15.92-15.82,24.7-24.56-8.3-5.21-15.85-10.72-24.06-14.95-35.34-18.23-70.78-15.72-104.47,3.32-42.34,23.92-62.85,61.49-61.73,110.1,1.25,54.33,43.92,102.97,97.48,112.19,59.06,10.17,113.16-20.46,134.68-76.25,4.25-11.02,11.61-14.93,23.31-12.42,4.14.89,8.32,1.63,12.44,2.59,9.48,2.2,14.53,10.57,11.35,19.58-22.19,62.8-65.85,101.96-131.34,113.81-84.9,15.36-166.14-36.91-189.75-119.88C-19.69,121.46,37.59,25.09,129.83,4.28c51.97-11.73,97.68,1,138.54,33.99.87.7,1.74,1.42,2.62,2.11.18.14.44.2.66.29.34.34.69.69,1.03,1.03Z"/>
+        </svg>`,
+        'application/xml');
+
+    resetButton.appendChild(resetButton.ownerDocument.importNode(img.documentElement, true))
+  
+    $(resetButton).on("click", e => {
+        document.getElementById("seeker").value = "resetMap"
+        $("#search").click()        
+    })
+
+    // Ajoutez le bouton à la carte
+    var resetControl = L.control({ position: 'topleft' });
+    resetControl.onAdd = function() {
+        return resetButton;
+    };
+    resetControl.addTo(map);
+
+} 
 
 function responsiveFilter(){
     // Comportement du bouton de filtres
@@ -815,21 +831,6 @@ function responsiveFilter(){
         $("#open-close-filter").toggleClass("open")
     })
 }
-
-function createResetButton() {
-    // Création d'un bouton réinitialisant la carte
-    let reset_button = document.createElement("button")
-    reset_button.id= "reset-button"
-    reset_button.setAttribute("class", "btn btn-default")
-    reset_button.setAttribute("type", "button")
-    reset_button.textContent = "Réinitialiser la carte"
-  
-    $(reset_button).on("click", e => {
-        console.log("reset")
-    })
-    document.getElementById("mapDG").appendChild(reset_button)
-  
-  } 
 
 function onFullScreenChange() {
     // Déplacement des éléments du DOM pour afficher les filtres avec l'option plein écran
@@ -852,10 +853,10 @@ function onFullScreenChange() {
     $(buttonElement).toggleClass("fullscreen-filters")
 }
 
-
 function normalize_string(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/gm, "_").toLowerCase()
 }
+
 function getProspectIcon(sortedData = false){
     var icon = new DOMParser().parseFromString(
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44.74 44.74" fill="${sortedData.text_color}" style="background-color:${sortedData.color}">
