@@ -4,8 +4,8 @@ $(document).ready(function(){
 
 function getData(callback){
 
-    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
-    //fetch('./python/data.json')
+    //fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
+    fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
         throw new Error('Network response : ' + response.statusText);
@@ -133,6 +133,7 @@ function createMap(){
     // Tile PAD
     L.tileLayer('https://tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=YCEYIYWB5ZcUuCYc2XQe9fGjttHukDxdSd2wqzlA7mhBwMK8SXM9h3RGqxtZzuna', {}).addTo(map);
     map.attributionControl.addAttribution("<a href=\"https://www.jawg.io\" target=\"_blank\">&copy; Jawg</a> - <a href=\"https://www.openstreetmap.org\" target=\"_blank\">&copy; OpenStreetMap</a>&nbsp;contributors")
+    
     return map
    
 
@@ -149,7 +150,9 @@ function createMarker(sortedData, action) {
     let longitude = parseFloat(action.longitude.replace(",", "."))
     let icon = defineIcon(sortedData, action)
     let popup = createPopup(action, sortedData)
+
     let marker = L.marker([latitude, longitude], {icon: icon}).bindPopup(popup).openPopup()
+    
     marker["typeAction"] = action.action
     window.markers.push(marker)
     return marker
@@ -257,12 +260,7 @@ function createPopup(action, sortedData) {
         date.innerHTML = `<b>Date : </b>${date_debut} ${date_fin && (date_fin != date_debut) ? "| " + date_fin : ""}`
         popupContent.appendChild(date)
     }
-    function simplifyDate(str){
-        if (str){
-            return str.replace(/^[0-9]{2}(?!\/[0-9]{4})\/|[0-9]{2}:[0-9]{2}:[0-9]{2}/gm, "")
-        }
-        return undefined
-    }
+
     // Saison Cartel
     if (action.saison){
         let saison = document.createElement("p")
@@ -329,10 +327,15 @@ function createPopup(action, sortedData) {
         lien.textContent = "Informations"
         popupContent.appendChild(lien)
     }
-
-    return popupContent
+    var popup = L.responsivePopup().setContent(popupContent)
+    return popup
 }
-
+function simplifyDate(str){
+    if (str){
+        return str.replace(/^[0-9]{2}(?!\/[0-9]{4})\/|[0-9]{2}:[0-9]{2}:[0-9]{2}/gm, "")
+    }
+    return undefined
+}
 function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], selectedStatut = "all_statut") {
 
     var parentGroup = L.markerClusterGroup({
@@ -355,6 +358,9 @@ function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], s
         // Créer un sous-groupe pour chaque type d'action
         var actionGroup = L.featureGroup.subGroup(parentGroup, arrayMarkers);
         subGroups[typeAction] = actionGroup; // Ajouter le sous-groupe à l'objet subGroups
+        subGroups[typeAction]["color"] = sortedData[typeAction].color; 
+        subGroups[typeAction]["text_color"] = sortedData[typeAction].text_color; 
+        subGroups[typeAction]["name"] = sortedData[typeAction].name; 
     });
 
     
@@ -426,6 +432,7 @@ function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
     }
     $("#results b").text(count)
     disableNoResult(subGroups)
+    accessibilityButton(subGroups)
 }
 
 function disableNoResult(subGroups){
@@ -461,9 +468,11 @@ function disableNoResult(subGroups){
         // Désactive les types sans marqueurs
         if(subGroups[typeAction].getLayers().length == 0){
             inputType.setAttribute("disabled", "")
+            inputType.checked = false
         }
         else{
             inputType.removeAttribute("disabled")
+            
         }
     })        
 }
@@ -486,19 +495,22 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
     allTypesInput.setAttribute("data-backColor", "var(--light-blue)");
     allTypesInput.setAttribute("data-color", "var(--deep-blue)");
 
-
-
     allTypesButton.appendChild(allTypesInput)
-
-    let iconInput = createIconInput("all_type", allTypesInput)
-    allTypesButton.appendChild(iconInput);
 
     allTypesInput.checked = selectedTypes.includes("all_type") ? true : false
     typeCheckedStyle(allTypesInput)
-    
+
     var allTypesLabel = document.createElement("label");
     allTypesLabel.setAttribute("for", "all_type");
-    allTypesLabel.textContent = "Toutes les actions";
+
+    let iconInput = createIconInput("all_type", allTypesInput)
+    allTypesButton.appendChild(iconInput);
+    
+    let labelTextAllInput = document.createElement("p")
+    labelTextAllInput.textContent = "Toutes les actions";
+
+    allTypesLabel.appendChild(iconInput)
+    allTypesLabel.appendChild(labelTextAllInput)
 
     allTypesButton.appendChild(allTypesLabel)
     parent.appendChild(allTypesButton);
@@ -543,20 +555,25 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
         input.setAttribute("name", "type_action");
         input.setAttribute("value", action);
 
-        checkboxes.push(input)
-
         container.appendChild(input);
-
-        let iconInput = createIconInput(action, input)
-        container.appendChild(iconInput);
 
         input.checked = (selectedTypes.includes(action) || selectedTypes.includes("all_type")) ? true : false
         typeCheckedStyle(input) 
+        
+        checkboxes.push(input)
 
         let label = document.createElement("label");
         label.setAttribute("for", action);
         label.style.left = "6px";
-        label.textContent = sortedData[action].name;
+
+        let iconInput = createIconInput(action, input)
+
+        let labelText = document.createElement("p")
+        labelText.textContent = sortedData[action].name;
+
+        label.appendChild(iconInput);
+        label.appendChild(labelText);
+        
         container.appendChild(label);
 
         parent.appendChild(container);
@@ -603,16 +620,14 @@ function createIconInput(action, input){
 }
 
 function typeCheckedStyle(input){
-
     if (!input.nextElementSibling) {return}
-
     if (input && !input.checked) { 
-        input.nextElementSibling.children[0].setAttribute("style", "fill: #F2F2F2; stroke: #666; stroke-width:1px")
-        input.nextElementSibling.children[1].setAttribute("display", "none")
+        input.nextElementSibling.children[0].children[0].setAttribute("style", "fill: #F2F2F2; stroke: #666; stroke-width:1px")
+        input.nextElementSibling.children[0].children[1].setAttribute("display", "none")
     }
     else{
-        input.nextElementSibling.children[0].setAttribute("style", `fill: ${input.getAttribute("data-backColor")}; stroke: #ccc; stroke-width:0px; `)
-        input.nextElementSibling.children[1].setAttribute("display", "block")
+        input.nextElementSibling.children[0].children[0].setAttribute("style", `fill: ${input.getAttribute("data-backColor")}; stroke: #ccc; stroke-width:0px; `)
+        input.nextElementSibling.children[0].children[1].setAttribute("display", "block")
     }
 
 }
@@ -867,6 +882,223 @@ function getProspectIcon(sortedData = false){
         </svg>`,
         'application/xml');
     return icon
+}
+
+function accessibilityButton(subGroups){
+    $("#access-button").on("click", e => {
+        accessibilityTable(subGroups)
+    })
+}
+function accessibilityTable(subGroups){
+
+    // Vérifie si la popup existe et la retire le cas éxhéant
+    if ($("#access-modal").length) {
+        $("#access-modal").remove()
+    }
+    var modal = document.createElement("section")
+    modal.setAttribute("id", "access-modal")
+    document.getElementById("mapDG-container").appendChild(modal)
+
+    var closeButtonContainer = document.createElement("div")
+    closeButtonContainer.setAttribute("class", "close-button-container")
+
+    var closeButton = document.createElement("button")
+    closeButton.setAttribute("class", "btn btn-default close")
+    closeButton.textContent = "Fermer le tableau"
+    $(closeButton).click(e => {
+        $("#access-modal").remove()
+    })
+    closeButtonContainer.appendChild(closeButton)
+    modal.appendChild(closeButtonContainer)
+
+    var container = document.createElement("div")
+    container.setAttribute("class", "table-container")
+
+    var title = document.createElement("h2")
+    title.textContent = "Liste des actions de la Philharmonie de Paris en France et à l'internationnal"
+    container.appendChild(title)
+
+    // Créé un tableau pat type d'action
+    Object.keys(subGroups).map(typeAction => {
+        var arrayMarkers = subGroups[typeAction].getLayers()
+
+        var isChecked = document.querySelector(`input[name="type_action"][value="${typeAction}"]:checked`)
+
+        if (!arrayMarkers || arrayMarkers.length == 0 || !isChecked) { return }
+        var actionField = Object.keys(arrayMarkers[0].data)
+
+        var table = document.createElement("table")
+        var caption = document.createElement("caption")
+        caption.textContent = subGroups[typeAction].name
+
+        table.appendChild(caption)
+
+        // Header du tableau
+        var header = document.createElement("thead")
+        header.setAttribute("style", `background-color:${subGroups[typeAction].color}; color:${subGroups[typeAction].text_color};`)
+
+        if (actionField.some(e => e == "prospect")){
+            createHeaderEntry(header, "Prospect")
+        }
+
+        createHeaderEntry(header, "Nom")
+
+        let conditions = ["nom_orchestre", "nom_projet", "nom_expo", "nom_expo_distance"]
+        var isProduction = false
+        if (conditions.some(str => actionField.toString().includes(str))){
+            createHeaderEntry(header, "Production")
+            isProduction = true
+        }
+
+        if (actionField.some(e => e == "type_orchestre")){
+            createHeaderEntry(header, "Type d'orchestre")
+        }
+
+        if (actionField.some(e => e == "type_cooperation")){
+            createHeaderEntry(header, "Type de coopération")
+        }
+
+        if (actionField.some(e => e == "date")){
+            createHeaderEntry(header, "Date")
+        }
+
+        if (actionField.some(e => e == "saison")){
+            createHeaderEntry(header, "Saison")
+        }
+
+        if (actionField.some(e => e == "nombre_structures")){
+            createHeaderEntry(header, "Structures abonnées")
+        }
+
+        if (actionField.some(e => e == "services")){
+            createHeaderEntry(header, "Services")
+        }
+
+        createHeaderEntry(header, "Adresse")
+
+        if (actionField.some(e => e == "lien")){
+            createHeaderEntry(header, "Lien")
+        }
+
+        table.appendChild(header)
+
+        // Body du tableau
+        var body = document.createElement("tbody")
+        subGroups[typeAction].getLayers().map(marker => {
+
+            var action = marker.data
+            var line = document.createElement("tr")
+            line.setAttribute("scope", "row")
+
+            var prospect = document.createElement("td")
+            prospect.textContent = action.prospect
+            line.appendChild(prospect)
+            
+            var nom = document.createElement("td")
+            nom.textContent = action.nom
+            line.appendChild(nom)
+
+            if (isProduction){
+                var production = document.createElement("td")
+                production.textContent = action.nom_orchestre || action.nom_projet || action.nom_expo || action.nom_expo_distance
+                line.appendChild(production)
+            }
+            if (actionField.some(e => e == "type_orchestre")){
+                var type_orchestre = document.createElement("td")
+                type_orchestre.textContent = action.type_orchestre
+                line.appendChild(type_orchestre)
+            }
+    
+            if (actionField.some(e => e == "type_cooperation")){
+                var type_cooperation = document.createElement("td")
+                type_cooperation.textContent = action.type_cooperation
+                line.appendChild(type_cooperation)
+            }
+    
+            if (actionField.some(e => e == "date")){
+                var date = document.createElement("td")
+                let date_debut = simplifyDate(action.date)
+                let date_fin = simplifyDate(action.date_fin)
+                let dateText = `${date_debut} ${date_fin && (date_fin != date_debut) ? "| " + date_fin : ""}`
+                date.textContent = dateText == "undefined " ? "" : dateText
+                line.appendChild(date)
+            }
+    
+            if (actionField.some(e => e == "saison")){
+                var saison = document.createElement("td")
+                saison.textContent = action.saison
+                line.appendChild(saison)
+            }
+    
+            if (actionField.some(e => e == "nombre_structures")){
+                var nombre_structures = document.createElement("td")
+                nombre_structures.textContent = action.nombre_structures
+                line.appendChild(nombre_structures)
+            }
+    
+            if (actionField.some(e => e == "services")){
+                let p = "Accès sur place"
+                let a = "Accès à domicile"
+                let servicesString = ""
+                switch (action.services) {
+                    case "A": servicesString += a
+                    break;
+                    case "P": servicesString += p
+                    break;
+                    case "AP": servicesString += a + " & " + p
+                    break;
+                    default: servicesString = ""
+                    break;
+                }
+                var services = document.createElement("td")
+                services.textContent = servicesString
+                line.appendChild(services)
+            }
+
+            let adresseString = [...new Set([
+                action.adresse, 
+                action.complement_adresse, 
+                action.code_postal,
+                action.ville,
+            ])].filter( Boolean ).join(" ")
+        
+            let stateString = [...new Set([
+                action.departement, 
+                action.etat, 
+                action.pays
+            ])].filter( Boolean ).join(", ")
+
+            var adresse = document.createElement("td")
+            adresse.textContent = adresseString + " " + stateString
+            line.appendChild(adresse)
+
+            if (actionField.some(e => e == "lien")){
+                var cell = document.createElement("td")
+                let lien = document.createElement("a")
+                lien.setAttribute("href", action.lien)
+                lien.setAttribute("title", "Aller sur la page de l'action dans un nouvel onglet")
+                lien.setAttribute("target", "_blank")
+                lien.textContent = "Informations"
+                cell.appendChild(lien)
+                line.appendChild(cell)
+            }
+
+            body.appendChild(line)
+        })
+        table.appendChild(body)
+        container.appendChild(table)
+    })
+
+    modal.appendChild(container)
+    
+
+}
+
+function createHeaderEntry(header, text){
+    var headerEntry = document.createElement("th")
+    headerEntry.setAttribute("scope", "col")
+    headerEntry.textContent = text
+    header.appendChild(headerEntry)
 }
 
 function checkAction(city){

@@ -70,6 +70,11 @@ body{
 }
 #cl-module label{
     font-size: 0.87em;
+    display: flex;
+    align-items: center;
+}
+#cl-module label p{
+    margin: 0;
 }
 /* ////////// CONTAINER LAYOUT ////////// */
 #mapDG-container{
@@ -176,6 +181,11 @@ body{
     padding: 0;
     margin: 0 0 1em 0;
 }
+#cl-module fieldset#statut_action div{
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 0.3em;
+}
 #cl-module fieldset > div input,
 #cl-module fieldset > div label{
     cursor: pointer;
@@ -184,9 +194,9 @@ body{
     position: relative;
     bottom: 2px;
 }
-#cl-module fieldset > div input:disabled + div,
-#cl-module fieldset > div input:disabled + div svg,
-#cl-module fieldset > div input:disabled + div + label {
+#cl-module fieldset > div input:disabled + label,
+#cl-module fieldset > div input:disabled + label svg,
+#cl-module fieldset > div input:disabled + label {
     cursor: initial !important;
     color: #ccc !important;
     fill: #ccc !important;
@@ -241,7 +251,7 @@ body{
 }
 /* ////////// TYPES ACTIONS BUTTONs ////////// */
 #cl-module #type_action_container > div{
-    padding: 0.5em 1em 0.5em 0;
+    padding: 0.5em 1em 0.1em 0;
     border-radius: 25px;
     background-color: transparent;
     transition: background-color 0.2s ease-in-out;
@@ -399,6 +409,76 @@ body{
     margin: 0 0 0.5em 0;
 }
 
+/* ////////// ACCESSIBILITE TABLE ////////// */
+#access-modal {
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    position: fixed;
+    z-index: 1001;
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+#access-modal .close-button-container{
+    width: 90%;
+    margin: 1% auto;
+    position: relative;
+    height: 30px;
+    display: block;
+}
+
+#cl-module #access-modal .close{
+    position: absolute;
+    right: 0;
+    top: 2%;
+}
+
+#access-modal .table-container{
+    background-color: #fff;
+    width: 90%;
+    display: block;
+    margin: 3% auto;
+    border-radius: 16px;
+    padding: 1em;
+    overflow-y: scroll;
+    height: calc(100vh - 20%);
+}
+
+#access-modal h2 {
+    text-align: center;
+}
+
+#access-modal table caption {
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 0.5em;
+    text-align: center;
+}
+
+#access-modal table{
+    width: 100%;
+    font-family: 'Source Sans Pro';
+    margin: 1em auto;
+    border-collapse: collapse;
+    text-align: left;
+    border: 1px solid var(--deep-blue);
+}
+#access-modal th{
+    text-align: left;
+    padding: 0.5em;
+}
+#access-modal tr{
+    border: 1px solid var(--deep-blue);
+}
+#access-modal td{
+    padding: 0.5em;
+    vertical-align: middle;
+}
+#access-modal a{
+    color: var(--deep-blue);
+    text-decoration: underline;
+}
 /* ////////// CONTROLS ////////// */
 .leaflet-control-layers .leaflet-control-layers-toggle{
     display: none;
@@ -422,5 +502,10 @@ body{
 @media screen and (max-height:964px) {
     #cl-module #mapDG-filter-container{
         overflow-y: scroll;
+    }
+}
+@media screen and (max-width:375px) {
+    #cl-module #open-close-filter.open {
+        left: 240px;
     }
 }
