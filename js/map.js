@@ -4,8 +4,8 @@ $(document).ready(function(){
 
 function getData(callback){
 
-    //fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
-    fetch('./python/data.json')
+    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
+    //fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
         throw new Error('Network response : ' + response.statusText);
@@ -128,7 +128,7 @@ function createMap(){
         scrollWheelZoom: true, 
         minZoom :  2,
         maxZoom: 12,
-    }).setView(initial_view.latlng, initial_view.zoom); 
+    }).setView(initial_view.latlng, initial_view.zoom);     
 
     // Tile PAD
     L.tileLayer('https://tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=YCEYIYWB5ZcUuCYc2XQe9fGjttHukDxdSd2wqzlA7mhBwMK8SXM9h3RGqxtZzuna', {}).addTo(map);
