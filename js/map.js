@@ -4,7 +4,8 @@ $(document).ready(function(){
 
 function getData(callback){
 
-    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
+    fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx?private=true')
+    //fetch('https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx')
     //fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
@@ -95,6 +96,8 @@ function generalMapFunction(data){
     // Recherche plein texte
     searchBox(actions, typesAction, config, map, sortedData)
 
+    responsiveMap()
+
 }
 
 function createSortedDataObject(data, typesAction, config) {
@@ -151,7 +154,7 @@ function createMarker(sortedData, action) {
     let icon = defineIcon(sortedData, action)
     let popup = createPopup(action, sortedData)
 
-    let marker = L.marker([latitude, longitude], {icon: icon}).bindPopup(popup).openPopup()
+    let marker = L.marker([latitude, longitude], {icon: icon}).bindPopup(popup, {maxWidth : 340}).openPopup()
     
     marker["typeAction"] = action.action
     window.markers.push(marker)
@@ -298,22 +301,14 @@ function createPopup(action, sortedData) {
     }
 
     // Adresse Cartel 
-    let adresseString = [...new Set([
-        action.adresse, 
-        action.complement_adresse, 
-        action.code_postal,
-        action.ville,
-    ])].filter( Boolean ).join(" ")
-
-    let stateString = [...new Set([
-        action.departement, 
-        action.etat, 
+    let adresse = [...new Set([
+        action.ville, 
         action.pays
     ])].filter( Boolean ).join(", ")
 
     let adresseElt = document.createElement("address")
     adresseElt.setAttribute("class", "address-action")
-    adresseElt.innerHTML = "<b>Adresse : </b>" + adresseString + (adresseString ? "<br/>" : "") + stateString
+    adresseElt.textContent = adresse
     popupContent.appendChild(adresseElt)
 
     // Lien Cartel
@@ -874,11 +869,9 @@ function normalize_string(str) {
 
 function getProspectIcon(sortedData = false){
     var icon = new DOMParser().parseFromString(
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44.74 44.74" fill="${sortedData.text_color}" style="background-color:${sortedData.color}">
-            <g>
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44.74 44.74" preserveAspectRatio="xMidYMin meet"  width="18" height="100%" fill="${sortedData.text_color}" style="background-color:${sortedData.color}">
                 <path class="cls-1" d="m22.37,12.78c-.92,0-1.67.75-1.67,1.67v7.92c0,.92.75,1.67,1.67,1.67,0,0,0,0,0,0,0,0,0,0,0,0h4.36c.92,0,1.67-.75,1.67-1.67s-.75-1.67-1.67-1.67h-2.7v-6.25c0-.92-.75-1.67-1.67-1.67Z"/>
                 <path class="cls-1" d="m43.07,20.7h-4.22c-.92,0-1.67.75-1.67,1.67s.75,1.67,1.67,1.67h2.47c-.8,9.16-8.12,16.48-17.28,17.28v-2.47c0-.92-.75-1.67-1.67-1.67s-1.67.75-1.67,1.67v2.47c-9.16-.8-16.48-8.12-17.28-17.28h2.47c.92,0,1.67-.75,1.67-1.67s-.75-1.67-1.67-1.67h-2.47C4.22,11.54,11.54,4.22,20.7,3.42v2.47c0,.92.75,1.67,1.67,1.67s1.67-.75,1.67-1.67v-2.47c2.35.21,4.64.85,6.75,1.89l-1.48,1.91,8.26,1.11-3.17-7.71-1.54,2c-3.22-1.71-6.83-2.62-10.5-2.62C10.03,0,0,10.03,0,22.37s10.03,22.37,22.37,22.37,22.37-10.03,22.37-22.37c0-.92-.75-1.67-1.67-1.67Z"/>
-            </g>
         </svg>`,
         'application/xml');
     return icon
@@ -1099,6 +1092,24 @@ function createHeaderEntry(header, text){
     headerEntry.setAttribute("scope", "col")
     headerEntry.textContent = text
     header.appendChild(headerEntry)
+}
+
+function responsiveMap(){
+    setResponsiveHeight()
+    addEventListener("resize", () => {
+        setResponsiveHeight()
+    });
+}
+function setResponsiveHeight(){
+    var margin = 40
+    var titleHeight = $('.map-title').outerHeight(true)
+    var filters = document.getElementById("mapDG-filter-container")
+    var mapContainer = document.getElementById("mapDG")
+
+    var windowHeight = window.innerHeight
+    var mapElementsHeight = windowHeight - titleHeight - margin
+    filters.style.height = mapElementsHeight + "px"
+    mapContainer.style.height = mapElementsHeight + "px"
 }
 
 function checkAction(city){

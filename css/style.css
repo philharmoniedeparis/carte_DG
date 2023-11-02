@@ -63,6 +63,10 @@ body{
     font-weight: bold;
     text-transform: uppercase;
 }
+#cl-module{
+    height: 95vh;
+    max-height: 900px;
+}
 #cl-module p, 
 #cl-module label, 
 #cl-module input{
@@ -104,7 +108,7 @@ body{
 #cl-module #open-close-filter{
     position: absolute;
     left: 0px;
-    z-index: 100001;
+    z-index: 999;
     bottom: 20px;
     background-color: var(--white);
     border: none;
