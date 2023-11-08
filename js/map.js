@@ -1,7 +1,18 @@
+/**
+ * Documentation for map.js
+ *
+ * This file contains the code for creating an interactive map using Leaflet
+ * and its plugins: markerCluster, FullScreen, and subGroup.
+ */
+
 $(document).ready(function(){
     getData(generalMapFunction)
 })
 
+/**
+ * Réupère les données des marqueurs de la carte et de configuration
+ * @param {function} callback - callback éxécuté une fois le chargement des données effectué
+ */
 function getData(callback){
 
     // Récupère le paramétre private dans l'url. S'il n'existe pas, le met à false
@@ -26,6 +37,10 @@ function getData(callback){
     });
 }
 
+/**
+ * Fonction générale de génération de la carte
+ * @param {Object} data - Dataset de la carte
+ */
 function generalMapFunction(data){
     console.log(data)
 
@@ -103,6 +118,12 @@ function generalMapFunction(data){
 
 }
 
+/**
+ * Fonction de tri et de calcul statistique des données
+ * @param {Object} data - Dataset des actions
+ * @param {array} typesAction - array of string des types d'actions
+ * @param {Object} config - Informations de configuration
+ */
 function createSortedDataObject(data, typesAction, config) {
     var sortedData = {}
     typesAction.map(action => {
@@ -118,6 +139,9 @@ function createSortedDataObject(data, typesAction, config) {
     return sortedData
 }
 
+/**
+ * Fonction de création de la carte
+ */
 function createMap(){
 
     // Variable de sauvegarde des marqueurs
@@ -136,21 +160,18 @@ function createMap(){
         maxZoom: 12,
     }).setView(initial_view.latlng, initial_view.zoom);     
 
-    // Tile PAD
     L.tileLayer('https://tile.jawg.io/jawg-light/{z}/{x}/{y}{r}.png?access-token=YCEYIYWB5ZcUuCYc2XQe9fGjttHukDxdSd2wqzlA7mhBwMK8SXM9h3RGqxtZzuna', {}).addTo(map);
     map.attributionControl.addAttribution("<a href=\"https://www.jawg.io\" target=\"_blank\">&copy; Jawg</a> - <a href=\"https://www.openstreetmap.org\" target=\"_blank\">&copy; OpenStreetMap</a>&nbsp;contributors")
     
     return map
    
-
-    // Tile 1
-    /* L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map)
-    return map  */ 
 }
 
-
+/**
+ * Fonction de création des marqueurs
+ * @param {Object} sortedData - Données triées issues de createSortedDataObject
+ * @param {Object} action - action du dataset
+ */
 function createMarker(sortedData, action) {
     let latitude = parseFloat(action.latitude.replace(",", "."))
     let longitude = parseFloat(action.longitude.replace(",", "."))
@@ -164,6 +185,11 @@ function createMarker(sortedData, action) {
     return marker
 }
 
+/**
+ * Fonction de création de l'icone du marqueur
+ * @param {Object} sortedData - Données triées issues de createSortedDataObject
+ * @param {Object} action - action du dataset
+ */
 function defineIcon(sortedData, action) {
     if (action.prospect == "oui"){
         var iconPath = `
@@ -194,6 +220,11 @@ function defineIcon(sortedData, action) {
     })
 }
 
+/**
+ * Fponction de création de la popup du marqueur
+ * @param {Object} sortedData - Données triées issues de createSortedDataObject
+ * @param {Object} action - action du dataset
+ */
 function createPopup(action, sortedData) {
     let popupContent = document.createElement('div')
     popupContent.setAttribute("class", 'values')
@@ -328,12 +359,26 @@ function createPopup(action, sortedData) {
     var popup = L.responsivePopup().setContent(popupContent)
     return popup
 }
+
+/**
+ * Fonction de simplification des dates du dataset
+ * @param {string} str - Date issue de l'action
+ */
 function simplifyDate(str){
     if (str){
         return str.replace(/^[0-9]{2}(?!\/[0-9]{4})\/|[0-9]{2}:[0-9]{2}:[0-9]{2}/gm, "")
     }
     return undefined
 }
+
+/**
+ * Fonction de création du cluster contenant les marqueurs
+ * @param {Object} sortedData - Données triées issues de createSortedDataObject
+ * @param {Object} action - action du dataset
+ * @param {Object} map - Variable contenant l'objet carte
+ * @param {Object} selectedTypes Variable contenant les types sélectionnés
+ * @param {Object} selectedStatut Variable contenant le statut sélectionné
+ */
 function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], selectedStatut = "all_statut") {
 
     var parentGroup = L.markerClusterGroup({
@@ -390,6 +435,12 @@ function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], s
     window["parentGroup"] = parentGroup
 }
 
+/**
+ * Fonction de mise à jour du compteur d'action
+ * @param {Object} subGroups Sous
+ * @param {Object} selectedStatut Variable contenant le statut sélectionné
+ * @param {Object} selectedTypes Variable contenant les types sélectionnés
+ */
 function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
 
     // Récupère la liste des actions sélectionnées
@@ -433,35 +484,14 @@ function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
     accessibilityButton(subGroups)
 }
 
+/**
+ * Fonction désactivant l'option du filtre de type lorsqu'aucun résultat n'est présent sur la carte
+ * @param {Object}subGroups - Variable contenant les sous-groupes du cluster
+ */
 function disableNoResult(subGroups){
     
     Object.keys(subGroups).forEach(typeAction => {
-        var inputType = document.querySelector(`input[name="type_action"][value="${typeAction}"]`)
-
-        /* // Désactivation des statuts, discuter du comportement et de l'UI
-        var statutInputs = document.querySelectorAll(`input[name="statut_action"]`)
-        var statutList = Array.from(statutInputs).map(input => { return input.value})
-
-        // Désactive les statuts sans marqueurs
-        statutList.map(value => {
-            let countProspects = subGroups[typeAction].getLayers().filter(marker => { return marker.data.prospect == "oui" }).length
-            let countEnCours = subGroups[typeAction].getLayers().filter(marker => { return marker.data.prospect == "non" }).length
-
-            if ((value == "all_statut" || value == "prospects") && countProspects == 0) {
-                document.querySelector(`input[name="statut_action"][value="prospects"]`).setAttribute("disabled", "")
-            }
-            else{
-                document.querySelector(`input[name="statut_action"][value="prospects"]`).removeAttribute("disabled")
-            }
-            if ((value == "all_statut" || value == "en_cours") &&  countEnCours == 0){
-                document.querySelector(`input[name="statut_action"][value="en_cours"]`).setAttribute("disabled", "")
-            }
-            else{
-                document.querySelector(`input[name="statut_action"][value="en_cours"]`).removeAttribute("disabled")
-            }
-            
-        }) */
-        
+        var inputType = document.querySelector(`input[name="type_action"][value="${typeAction}"]`)        
 
         // Désactive les types sans marqueurs
         if(subGroups[typeAction].getLayers().length == 0){
@@ -475,6 +505,13 @@ function disableNoResult(subGroups){
     })        
 }
 
+/**
+ * Fonction ajoutant les types d'actions disponibles
+ * @param {Object} sortedData - Données triées issues de createSortedDataObject
+ * @param {Object}subGroups - Variable contenant les sous-groupes du cluster
+ * @param {Object} map - Variable contenant l'objet carte
+ * @param {Object} selectedTypes Variable contenant les types sélectionnés
+ */
 function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
 
     // Réinitialisation du conteneur
@@ -592,6 +629,11 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
     });
 }
 
+/**
+ * Fonction de création de l'icone des filtres de types
+ * @param {Object}action - Action
+ * @param {Object}input - Input de l'action
+ */
 function createIconInput(action, input){
     let backColor = input.getAttribute("data-backColor")
 
@@ -617,6 +659,10 @@ function createIconInput(action, input){
     return container
 }
 
+/**
+ * Modification du style pour les checkboxs cochées et décochées
+ * @param {Object}input - Input du type d'action
+ */
 function typeCheckedStyle(input){
     if (!input.nextElementSibling) {return}
     if (input && !input.checked) { 
@@ -630,6 +676,13 @@ function typeCheckedStyle(input){
 
 }
 
+/**
+ * Fonction ajoutant ou supprimant les layers de la carte en fonction des filtres de type
+ * @param {Object}marker - variable contenant le marqueur
+ * @param {Object}subGroups - Variable contenant les sous-groupes du cluster
+ * @param {str}typeAction - id du type d'action
+ * @param {bool}remove - option de retrait du layer 
+ */
 function checkMarker(marker, subGroups, typeAction, remove = false){
     if (!subGroups[typeAction].hasLayer(marker) && marker.typeAction == typeAction) {
         subGroups[typeAction].addLayer(marker);
@@ -639,6 +692,13 @@ function checkMarker(marker, subGroups, typeAction, remove = false){
     }
 }
 
+/**
+ * Fonction générant le filtre de statut des actions
+ * @param {Object}action - Action
+ * @param {Object}subGroups - Variable contenant les sous-groupes du cluster
+ * @param {Object}map - Variable contenant l'objet carte
+ * @param {Object}selectedStatut Variable contenant le statut sélectionné
+ */
 function addProspectsRadioButton(actions, subGroups, map, selectedStatut) {
 
     // Réinitialisation du conteneur
@@ -687,6 +747,13 @@ function addProspectsRadioButton(actions, subGroups, map, selectedStatut) {
     }
 }
 
+/**
+ * Fonction de création des champs du filtre de statut
+ * @param {elt}fieldset - Element du DOM correspondant au fieldset du filtre
+ * @param {str}id - id de l'option
+ * @param {str}text - Texte du filtre
+ * @param {Object}selectedStatut Variable contenant le statut sélectionné
+ */
 function createField(fieldset, id, text, selectedStatut) {
     let container = document.createElement("div")
 
@@ -714,6 +781,14 @@ function createField(fieldset, id, text, selectedStatut) {
     fieldset.appendChild(container)
 }
 
+/**
+ * Fonction générant la recherche textuelle
+ * @param {array}actions - Dataset des actions
+ * @param {array} typesAction - array of string des types d'actions
+ * @param {Object} config - Informations de configuration
+ * @param {Object} sortedData - Données triées issues de createSortedDataObject
+ * @param {Object} map - Variable contenant l'objet carte
+ */
 function searchBox(actions, typesAction, config, map, sortedData) {
 
     if (!RegExp.escape) {
@@ -767,6 +842,10 @@ function searchBox(actions, typesAction, config, map, sortedData) {
     })
 }
 
+/**
+ * Fonction de filtre par texte
+ * @param {array}actions Array des actions
+ */
 function filterSearch(actions) {
 
     var searchTerms = document.getElementById("seeker").value.replace(/\s$/gmi, "")
@@ -799,12 +878,21 @@ function filterSearch(actions) {
     return { "filtered": filtered.flat(), "query": queryReg }
 }
 
+/**
+ * Fonction de filtre texte
+ * @param {array}arr Array des données textuelles d'une action
+ * @param {str}query Terme de recherche
+ */
 const filterIt = (arr, query) => {
     return arr.filter(obj => Object.keys(obj).some(key => {
         return new RegExp(query, "mgi").test(obj[key])
     }))
 }
 
+/**
+ * Fonction de création du bouton reset de la carte
+ * @param {Object}map - Variable contenant l'objet carte
+ */
 function createResetButton(map) {
 
     // Création d'un bouton réinitialisant la carte
@@ -836,6 +924,9 @@ function createResetButton(map) {
 
 } 
 
+/**
+ * Comportement responsive des filtres
+ */
 function responsiveFilter(){
     // Comportement du bouton de filtres
     $("#open-close-filter").on("click", e => {
@@ -845,6 +936,9 @@ function responsiveFilter(){
     })
 }
 
+/**
+ * Fonction réglant le comportement des filtres lors du passage en plein écran
+ */
 function onFullScreenChange() {
     // Déplacement des éléments du DOM pour afficher les filtres avec l'option plein écran
     var mapElement = document.getElementById('mapDG');
@@ -866,10 +960,18 @@ function onFullScreenChange() {
     $(buttonElement).toggleClass("fullscreen-filters")
 }
 
+/**
+ * Fonction de normalisation des string
+ * @param {str}str - string
+ */
 function normalize_string(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/gm, "_").toLowerCase()
 }
 
+/**
+ * Fonction de création de l'icone de prospect
+ * @param {Object}sortedData - Objet permettant la récupération de la couleur de la data
+ */
 function getProspectIcon(sortedData = false){
     var icon = new DOMParser().parseFromString(
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44.74 44.74" preserveAspectRatio="xMidYMin meet"  width="18" height="100%" fill="${sortedData.text_color}" style="background-color:${sortedData.color}">
@@ -880,11 +982,20 @@ function getProspectIcon(sortedData = false){
     return icon
 }
 
+/**
+ * Fonction gérant le comportement du bouton d'accessibilité
+ * @param {Object}subGroups - Variable contenant les sous-groupes du cluster
+ */
 function accessibilityButton(subGroups){
     $("#access-button").on("click", e => {
         accessibilityTable(subGroups)
     })
 }
+
+/**
+ * Fonction de création de la table des résultats de la carte accessible
+ * @param {Object}subGroups - Variable contenant les sous-groupes du cluster
+ */
 function accessibilityTable(subGroups){
 
     // Vérifie si la popup existe et la retire le cas éxhéant
@@ -1086,10 +1197,13 @@ function accessibilityTable(subGroups){
     })
 
     modal.appendChild(container)
-    
-
 }
 
+/**
+ * Fonction de création des élements du header des tableaux accessible
+ * @param {elt}header - Element html de l'header
+ * @param {str}text - Texte de l'entrée
+ */
 function createHeaderEntry(header, text){
     var headerEntry = document.createElement("th")
     headerEntry.setAttribute("scope", "col")
@@ -1097,12 +1211,19 @@ function createHeaderEntry(header, text){
     header.appendChild(headerEntry)
 }
 
+/**
+ * Fonction du comportement responsive de la carte
+ */
 function responsiveMap(){
     setResponsiveHeight()
     addEventListener("resize", () => {
         setResponsiveHeight()
     });
 }
+
+/**
+ * Fonction du comportement responsive en fonction de la hauteur de fenetre
+ */
 function setResponsiveHeight(){
     var margin = 40
     var titleHeight = $('.map-title').outerHeight(true)
@@ -1115,6 +1236,10 @@ function setResponsiveHeight(){
     mapContainer.style.height = mapElementsHeight + "px"
 }
 
+/**
+ * Fonction de debogage de la carte permettant d'extraire les données d'une ville
+ * @param {str}city - Nom d'une ville
+ */
 function checkAction(city){
     return window.actions.filter(action => { return action.ville == city})
 }
