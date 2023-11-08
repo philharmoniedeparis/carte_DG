@@ -15,11 +15,16 @@ $(document).ready(function(){
  */
 function getData(callback){
 
-    // Récupère le paramétre private dans l'url. S'il n'existe pas, le met à false
-    let urlParams = new URLSearchParams(window.location.search)
-    var is_private = !! urlParams.get('private')
+    // Récupère le paramétre private dans l'url
 
-    fetch(`https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx?private=${is_private}`)
+    let urlParams = new URLSearchParams(window.location.search)
+    var is_private = "";
+    if(urlParams.has('private') && urlParams.get('private') == "true"){
+        is_private = "?private=" + urlParams.get('private')
+    }
+    console.log(is_private)
+
+    fetch(`https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx${is_private}`)
     //fetch('./python/data.json')
     .then(response => {
         if (!response.ok) {
