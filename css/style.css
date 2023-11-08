@@ -263,6 +263,9 @@ body{
     justify-content: flex-start;
     flex-direction: row;
     align-items: center;
+    margin-bottom: 0.5em;
+}
+#cl-module #type_action_container > div:first-child{
     margin-bottom: 1em;
 }
 #cl-module #type_action_container .btn.btn-default{
@@ -505,7 +508,7 @@ body{
 }
 @media screen and (max-height:964px) {
     #cl-module #mapDG-filter-container{
-        overflow-y: scroll;
+        overflow-y: auto;
     }
 }
 @media screen and (max-width:375px) {

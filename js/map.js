@@ -7,7 +7,6 @@ function getData(callback){
     // Récupère le paramétre private dans l'url. S'il n'existe pas, le met à false
     let urlParams = new URLSearchParams(window.location.search)
     var is_private = !! urlParams.get('private')
-    console.log(is_private)
 
     fetch(`https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx?private=${is_private}`)
     //fetch('./python/data.json')
