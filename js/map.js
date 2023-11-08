@@ -456,7 +456,8 @@ function updateResultsCounter(subGroups, selectedStatut, selectedTypes){
             .filter(typeAction => { return typeAction != "all_type"})
     }
     if(!selectedStatut){ 
-        selectedStatut = document.querySelector('input[name="statut_action"]:checked').value || undefined 
+        var statut = document.querySelector('input[name="statut_action"]:checked')
+        selectedStatut = statut ? document.querySelector('input[name="statut_action"]:checked').value : undefined
     }
 
     var count = 0
@@ -804,8 +805,9 @@ function searchBox(actions, typesAction, config, map, sortedData) {
     $('.search-bar').submit(function(e) { e.preventDefault() })
     $('#search').click(function(e) {
 
-        // Récupération des informattions des filtres
-        var selectedStatut = document.querySelector('input[name="statut_action"]:checked').value
+        // Récupération des informations des filtres
+        var statut = document.querySelector('input[name="statut_action"]:checked')
+        var selectedStatut = statut ? document.querySelector('input[name="statut_action"]:checked').value : undefined
 
         var selectedInputs = document.querySelectorAll('input[name="type_action"]:checked') || undefined 
         var selectedTypes = Array.from(selectedInputs)
@@ -829,6 +831,7 @@ function searchBox(actions, typesAction, config, map, sortedData) {
             filteredSortedData = sortedData
             selectedTypes = ["all_type"]
             selectedStatut = "all_statut" 
+            console.log(document.getElementById("seeker"))
             document.getElementById("seeker").value = ""
         }
         else {
