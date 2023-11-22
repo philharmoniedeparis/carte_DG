@@ -832,10 +832,6 @@ function searchBox(actions, typesAction, config, map, sortedData) {
         // Création du bouton Réinitialiser les filtres
         createResetButton(map)
 
-        // Création du nouvel handler d'évènement searchbox
-        //searchBox(actions, typesAction, config, map, sortedData)
-
-
     })
 }
 
@@ -874,17 +870,30 @@ function filterSearch(actions) {
     }
     return { "filtered": filtered.flat(), "query": queryReg }
 }
-
+/**
+ * Fonction de normalisation des chaînes de caractères (suppression des accents)
+ * @param {string} str Chaîne de caractères à normaliser
+ */
+const normalizeStringPlainText = (str) => {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
 /**
  * Fonction de filtre texte
  * @param {array}arr Array des données textuelles d'une action
  * @param {str}query Terme de recherche
  */
 const filterIt = (arr, query) => {
+    const normalizedQuery = normalizeStringPlainText(query);
     return arr.filter(obj => Object.keys(obj).some(key => {
-        return new RegExp(query, "mgi").test(obj[key])
-    }))
+        // Vérifier si la propriété est null ou undefined
+        if (obj[key] === null || obj[key] === undefined) {
+            return false;
+        }
+        const normalizedObjKey = normalizeStringPlainText(obj[key].toString());
+        return new RegExp(normalizedQuery, "mgi").test(normalizedObjKey);
+    }));
 }
+
 
 /**
  * Fonction de création du bouton reset de la carte
