@@ -206,6 +206,14 @@ body{
     fill: #ccc !important;
     stroke: #ccc !important;
 }
+#cl-module fieldset > div input:not(:checked) + label svg{
+    fill: #F2F2F2 !important; 
+    stroke: #666 !important; 
+    stroke-width:1px !important;
+}
+#cl-module fieldset > div input:not(:checked) + label svg:last-child{
+    display: none !important;
+}
 #cl-module #statut_action svg{
     width: 15px;
     height: 15px;

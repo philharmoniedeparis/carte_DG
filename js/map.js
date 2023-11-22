@@ -22,7 +22,6 @@ function getData(callback){
     if(urlParams.has('private') && urlParams.get('private') == "true"){
         is_private = "?private=" + urlParams.get('private')
     }
-    console.log(is_private)
 
     fetch(`https://otoplayer.philharmoniedeparis.fr/content/misc/getMapGlobalData.ashx${is_private}`)
     //fetch('./python/data.json')
@@ -81,7 +80,6 @@ function generalMapFunction(data){
             a.click();
         }
         //download(JSON.stringify(output), 'dataField.json', 'text/plain');
-        console.log(output)
     }
 
     /* /////////// END Fonctions de debuggage /////////// */
@@ -108,7 +106,7 @@ function generalMapFunction(data){
     var map = createMap()
 
     // Création des clusters
-    createCluster(sortedData, actions, map)
+    createCluster(sortedData, actions, map, typesAction)
 
     // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
     document.addEventListener('fullscreenchange', onFullScreenChange);
@@ -384,8 +382,7 @@ function simplifyDate(str){
  * @param {Object} selectedTypes Variable contenant les types sélectionnés
  * @param {Object} selectedStatut Variable contenant le statut sélectionné
  */
-function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], selectedStatut = "all_statut") {
-
+function createCluster(sortedData, actions, map, typesAction, selectedTypes = ["all_type"], selectedStatut = "all_statut") {
     var parentGroup = L.markerClusterGroup({
         showCoverageOnHover: false
     });
@@ -427,7 +424,7 @@ function createCluster(sortedData, actions, map, selectedTypes = ["all_type"], s
     L.control.layers(null, overlayMaps).addTo(map)
 
     // Ajouter les boutons radio au fieldset
-    addTypesCheckBox(sortedData, subGroups, map, selectedTypes)
+    addTypesCheckBox(sortedData, subGroups, map, selectedTypes, typesAction)
     
     // Ajout conditionnel du fieldset des prospects
     addProspectsRadioButton(actions, subGroups, map, selectedStatut)
@@ -518,7 +515,10 @@ function disableNoResult(subGroups){
  * @param {Object} map - Variable contenant l'objet carte
  * @param {Object} selectedTypes Variable contenant les types sélectionnés
  */
-function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
+function addTypesCheckBox(sortedData, subGroups, map, selectedTypes, typesAction) {
+    if (!selectedTypes.length || selectedTypes.length == typesAction.length ){
+        selectedTypes = ["all_type"]
+    }
 
     // Réinitialisation du conteneur
     $("#type_action_container").empty()
@@ -539,7 +539,6 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
     allTypesButton.appendChild(allTypesInput)
 
     allTypesInput.checked = selectedTypes.includes("all_type") ? true : false
-    typeCheckedStyle(allTypesInput)
 
     var allTypesLabel = document.createElement("label");
     allTypesLabel.setAttribute("for", "all_type");
@@ -556,6 +555,11 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
     allTypesButton.appendChild(allTypesLabel)
     parent.appendChild(allTypesButton);
 
+    if (allTypesInput.checked){
+        // Activer tous les sous-groupes
+        Object.keys(subGroups).forEach(typeAction => { map.addLayer(subGroups[typeAction]) })
+    }
+
     var checkboxes = [];
     // Ajouter un gestionnaire d'événements pour le bouton "Toutes les actions"
     allTypesInput.addEventListener("change", function () {
@@ -567,7 +571,6 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
             // Activer toutes les autres cases à cocher
             checkboxes.forEach(checkbox => { 
                 checkbox.checked = true 
-                typeCheckedStyle(checkbox)
             });
         }
         else{
@@ -578,10 +581,8 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
             // Désactiver toutes les autres cases à cocher
             checkboxes.forEach(checkbox => { 
                 checkbox.checked = false
-                typeCheckedStyle(checkbox)
             })
         }
-        typeCheckedStyle(allTypesInput)
         updateResultsCounter(subGroups);
     });
 
@@ -599,7 +600,6 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
         container.appendChild(input);
 
         input.checked = (selectedTypes.includes(action) || selectedTypes.includes("all_type")) ? true : false
-        typeCheckedStyle(input) 
         
         checkboxes.push(input)
 
@@ -627,9 +627,6 @@ function addTypesCheckBox(sortedData, subGroups, map, selectedTypes) {
                 map.removeLayer(subGroups[action]);
                 allTypesInput.checked = false
             }
-            typeCheckedStyle(input)
-            typeCheckedStyle(allTypesInput)
-
             updateResultsCounter(subGroups);
         });
     });
@@ -663,23 +660,6 @@ function createIconInput(action, input){
     container.appendChild(checkIcon)
 
     return container
-}
-
-/**
- * Modification du style pour les checkboxs cochées et décochées
- * @param {Object}input - Input du type d'action
- */
-function typeCheckedStyle(input){
-    if (!input.nextElementSibling) {return}
-    if (input && !input.checked) { 
-        input.nextElementSibling.children[0].children[0].setAttribute("style", "fill: #F2F2F2; stroke: #666; stroke-width:1px")
-        input.nextElementSibling.children[0].children[1].setAttribute("display", "none")
-    }
-    else{
-        input.nextElementSibling.children[0].children[0].setAttribute("style", `fill: ${input.getAttribute("data-backColor")}; stroke: #ccc; stroke-width:0px; `)
-        input.nextElementSibling.children[0].children[1].setAttribute("display", "block")
-    }
-
 }
 
 /**
@@ -809,19 +789,15 @@ function searchBox(actions, typesAction, config, map, sortedData) {
         var statut = document.querySelector('input[name="statut_action"]:checked')
         var selectedStatut = statut ? document.querySelector('input[name="statut_action"]:checked').value : undefined
 
-        var selectedInputs = document.querySelectorAll('input[name="type_action"]:checked') || undefined 
+        var selectedInputs = document.querySelectorAll('input[name="type_action"]:checked')
+
         var selectedTypes = Array.from(selectedInputs)
             .map(input => { return input.value})
-            .filter(type => { return type != "all_type"})
 
-        // Détruire et reconstruire la carte (la méthode removeLayer ou clearLayers ne fonctionne pas, 
-        // le parentgroup doit être stocké dans une autre variable inconnue..)
-        if (map == undefined) { return }
-        map.off()
-        map.remove()
-        map = undefined
-        
-        map = createMap()
+        typesAction.map(type => { 
+            var input = document.getElementById(type)
+            input.checked = selectedTypes.includes(type) ? true : false
+        })
 
         // Filtrer le dataset
         var filterQuery = filterSearch(actions)
@@ -831,21 +807,34 @@ function searchBox(actions, typesAction, config, map, sortedData) {
             filteredSortedData = sortedData
             selectedTypes = ["all_type"]
             selectedStatut = "all_statut" 
-            console.log(document.getElementById("seeker"))
             document.getElementById("seeker").value = ""
         }
         else {
             filteredSortedData = createSortedDataObject(filterQuery.filtered, typesAction, config)
         }
 
+
+        // Détruire et reconstruire la carte (la méthode removeLayer ou clearLayers ne fonctionne pas, 
+        // le parentgroup doit être stocké dans une autre variable inconnue..)
+        if (map == undefined) { return }
+        map.off()
+        map.remove()
+        map = undefined
+
+        map = createMap()
+
         // Création des nouveaux clusters
-        createCluster(filteredSortedData, filterQuery.filtered, map, selectedTypes, selectedStatut) 
+        createCluster(filteredSortedData, filterQuery.filtered, map, typesAction, selectedTypes, selectedStatut) 
 
         // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
         document.addEventListener('fullscreenchange', onFullScreenChange);
 
         // Création du bouton Réinitialiser les filtres
         createResetButton(map)
+
+        // Création du nouvel handler d'évènement searchbox
+        //searchBox(actions, typesAction, config, map, sortedData)
+
 
     })
 }
