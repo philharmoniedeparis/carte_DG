@@ -1034,9 +1034,17 @@ function accessibilityTable(subGroups){
     if ($("#access-modal").length) {
         $("#access-modal").remove()
     }
+
     var modal = document.createElement("section")
     modal.setAttribute("id", "access-modal")
-    document.getElementById("mapDG-container").appendChild(modal)
+
+
+    if($("#open-close-filter").hasClass("fullscreen-filters")){ 
+        document.getElementById('mapDG').appendChild(modal)
+    }
+    else{
+        document.getElementById("mapDG-container").appendChild(modal)
+    }
 
     var closeButtonContainer = document.createElement("div")
     closeButtonContainer.setAttribute("class", "close-button-container")
