@@ -813,6 +813,8 @@ function searchBox(actions, typesAction, config, map, sortedData) {
             filteredSortedData = createSortedDataObject(filterQuery.filtered, typesAction, config)
         }
 
+        var isFullscreen = $("#open-close-filter").hasClass("fullscreen-filters")
+        console.log(isFullscreen)
 
         // Détruire et reconstruire la carte (la méthode removeLayer ou clearLayers ne fonctionne pas, 
         // le parentgroup doit être stocké dans une autre variable inconnue..)
@@ -823,9 +825,22 @@ function searchBox(actions, typesAction, config, map, sortedData) {
 
         map = createMap()
 
-        // Création des nouveaux clusters
-        createCluster(filteredSortedData, filterQuery.filtered, map, typesAction, selectedTypes, selectedStatut) 
+        // Comportement responsive des filtres
+        responsiveFilter(map)
 
+        // Création des clusters
+        createCluster(sortedData, actions, map, typesAction)
+
+        // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
+        document.addEventListener('fullscreenchange', onFullScreenChange);
+
+        if(isFullscreen){
+            var fullscreenButton = document.querySelector(".leaflet-control-zoom-fullscreen");
+            if (fullscreenButton) {
+                var clickEvent = new Event('click');
+                fullscreenButton.dispatchEvent(clickEvent);
+            }
+        }
         // Création du bouton Réinitialiser les filtres
         createResetButton(map)
 
@@ -898,6 +913,11 @@ const filterIt = (arr, query) => {
  */
 function createResetButton(map) {
 
+    // Vérifie si le bouton existe et la retire le cas éxhéant
+    if ($("#reset-button").length) {
+        $("#reset-button").remove()
+    }
+
     // Création d'un bouton réinitialisant la carte
     var resetButton = document.createElement("button")
     resetButton.id= "reset-button"
@@ -916,7 +936,8 @@ function createResetButton(map) {
     $(resetButton).on("click", e => {
 
         document.getElementById("seeker").value = "resetMap"
-        $("#search").click()        
+        $("#search").click()     
+        
     })
 
     // Ajoutez le bouton à la carte
@@ -932,6 +953,10 @@ function createResetButton(map) {
  * Comportement responsive des filtres
  */
 function responsiveFilter(map){
+
+    // Cas reset map remove old event
+    $("#open-close-filter").off("click");
+
     // Comportement du bouton de filtres
     $("#open-close-filter").on("click", e => {
         $("#mapDG-filter-container").toggleClass("open")
@@ -939,23 +964,25 @@ function responsiveFilter(map){
         $("#open-close-filter").toggleClass("open")
 
         if($("#open-close-filter").hasClass("open")){
+            console.log("open")
+
+            if(!$("#open-close-filter").hasClass("fullscreen-filters")){ return }
+            map.dragging.disable();
+            map.touchZoom.disable();
+            map.doubleClickZoom.disable();
+            map.scrollWheelZoom.disable();
       
-              if(!$("#open-close-filter").hasClass("fullscreen-filters")){ return }
-              map.dragging.disable();
-              map.touchZoom.disable();
-              map.doubleClickZoom.disable();
-              map.scrollWheelZoom.disable();
-      
-          }
-          else{
-      
+        }
+        else{
+            console.log("close")
+
             if(!$("#open-close-filter").hasClass("fullscreen-filters")){ return }
             map.dragging.enable();
             map.touchZoom.enable();
             map.doubleClickZoom.enable();
             map.scrollWheelZoom.enable();
-      
-          }
+    
+        }
         onkeyup = e => {
         if ((e.keyCode == 27) && $("#mapFilter, #open-close-filter, #mapMusee").hasClass("open")){
             $("#mapFilter, #open-close-filter").removeClass("open")
