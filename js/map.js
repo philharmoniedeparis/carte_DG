@@ -814,7 +814,6 @@ function searchBox(actions, typesAction, config, map, sortedData) {
         }
 
         var isFullscreen = $("#open-close-filter").hasClass("fullscreen-filters")
-        console.log(isFullscreen)
 
         // Détruire et reconstruire la carte (la méthode removeLayer ou clearLayers ne fonctionne pas, 
         // le parentgroup doit être stocké dans une autre variable inconnue..)
@@ -964,7 +963,6 @@ function responsiveFilter(map){
         $("#open-close-filter").toggleClass("open")
 
         if($("#open-close-filter").hasClass("open")){
-            console.log("open")
 
             if(!$("#open-close-filter").hasClass("fullscreen-filters")){ return }
             map.dragging.disable();
@@ -974,7 +972,6 @@ function responsiveFilter(map){
       
         }
         else{
-            console.log("close")
 
             if(!$("#open-close-filter").hasClass("fullscreen-filters")){ return }
             map.dragging.enable();
