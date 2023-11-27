@@ -99,11 +99,11 @@ function generalMapFunction(data){
 
     analyzeData(sortedData, actions)
 
-    // Comportement responsive des filtres
-    responsiveFilter()
-
     // Création de la carte
     var map = createMap()
+
+    // Comportement responsive des filtres
+    responsiveFilter(map)
 
     // Création des clusters
     createCluster(sortedData, actions, map, typesAction)
@@ -826,9 +826,6 @@ function searchBox(actions, typesAction, config, map, sortedData) {
         // Création des nouveaux clusters
         createCluster(filteredSortedData, filterQuery.filtered, map, typesAction, selectedTypes, selectedStatut) 
 
-        // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
-        document.addEventListener('fullscreenchange', onFullScreenChange);
-
         // Création du bouton Réinitialiser les filtres
         createResetButton(map)
 
@@ -917,6 +914,7 @@ function createResetButton(map) {
     resetButton.appendChild(resetButton.ownerDocument.importNode(img.documentElement, true))
   
     $(resetButton).on("click", e => {
+
         document.getElementById("seeker").value = "resetMap"
         $("#search").click()        
     })
@@ -933,19 +931,26 @@ function createResetButton(map) {
 /**
  * Comportement responsive des filtres
  */
-function responsiveFilter(){
+function responsiveFilter(map){
     // Comportement du bouton de filtres
     $("#open-close-filter").on("click", e => {
         $("#mapDG-filter-container").toggleClass("open")
         $("#mapDG").toggleClass("open")
         $("#open-close-filter").toggleClass("open")
+
+        onkeyup = e => {
+        if ((e.keyCode == 27) && $("#mapFilter, #open-close-filter, #mapMusee").hasClass("open")){
+            $("#mapFilter, #open-close-filter").removeClass("open")
+        }
+        };
+
     })
 }
 
 /**
  * Fonction réglant le comportement des filtres lors du passage en plein écran
  */
-function onFullScreenChange() {
+function onFullScreenChange(map) {
     // Déplacement des éléments du DOM pour afficher les filtres avec l'option plein écran
     var mapElement = document.getElementById('mapDG');
     var filterElement = document.getElementById('mapDG-filter-container');
@@ -957,10 +962,13 @@ function onFullScreenChange() {
         // Si oui, déplace les éléments de filtre en dehors du conteneur de la carte
         mapElement.appendChild(filterElement)
         mapElement.appendChild(buttonElement)
+        //map.scrollWheelZoom.disable();
+
     } else {
         // Si non, remet les éléments de filtre dans le conteneur de la carte
         parentContainer.insertBefore(filterElement, mapElement)
         parentContainer.insertBefore(buttonElement, mapElement)
+        //map.scrollWheelZoom.enable();
     }
     $(filterElement).toggleClass("fullscreen-filters")
     $(buttonElement).toggleClass("fullscreen-filters")
