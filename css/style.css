@@ -163,7 +163,7 @@ body{
 }
 #cl-module #mapDG-filter-container.fullscreen-filters{
     max-height: unset;
-    overflow-y: unset;
+    overflow-y: auto;
     border-radius: 0 16px 16px 0;
     position: absolute;
     z-index: 99999;

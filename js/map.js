@@ -938,6 +938,24 @@ function responsiveFilter(map){
         $("#mapDG").toggleClass("open")
         $("#open-close-filter").toggleClass("open")
 
+        if($("#open-close-filter").hasClass("open")){
+      
+              if(!$("#open-close-filter").hasClass("fullscreen-filters")){ return }
+              map.dragging.disable();
+              map.touchZoom.disable();
+              map.doubleClickZoom.disable();
+              map.scrollWheelZoom.disable();
+      
+          }
+          else{
+      
+            if(!$("#open-close-filter").hasClass("fullscreen-filters")){ return }
+            map.dragging.enable();
+            map.touchZoom.enable();
+            map.doubleClickZoom.enable();
+            map.scrollWheelZoom.enable();
+      
+          }
         onkeyup = e => {
         if ((e.keyCode == 27) && $("#mapFilter, #open-close-filter, #mapMusee").hasClass("open")){
             $("#mapFilter, #open-close-filter").removeClass("open")
