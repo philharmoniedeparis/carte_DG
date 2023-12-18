@@ -801,7 +801,6 @@ function searchBox(actions, typesAction, config, map, sortedData) {
 
         // Filtrer le dataset
         var filterQuery = filterSearch(actions)
-
         // Comportement pour réinitialiser la carte
         if (filterQuery == "reset"){
             filteredSortedData = sortedData
@@ -828,7 +827,7 @@ function searchBox(actions, typesAction, config, map, sortedData) {
         responsiveFilter(map)
 
         // Création des clusters
-        createCluster(sortedData, actions, map, typesAction)
+        createCluster(filteredSortedData, actions, map, typesAction)
 
         // Ajoute un écouteur d'événements pour détecter les changements de mode plein écran
         document.addEventListener('fullscreenchange', onFullScreenChange);
